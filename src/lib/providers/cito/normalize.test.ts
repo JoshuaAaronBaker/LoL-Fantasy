@@ -6,6 +6,7 @@ import {
   normalizePlayerStats,
   normalizeTeamRoster,
   normalizeTournamentTeams,
+  normalizeTournamentCatalog,
 } from "./normalize";
 
 describe("Cito normalization", () => {
@@ -110,5 +111,26 @@ describe("Cito normalization", () => {
     });
     expect(normalizePlayerAggregateStats({ gamesPlayed: 10, wins: 6, avgKills: 4, avgDeaths: 2, avgAssists: 7, avgCs: 250 }))
       .toMatchObject({ gamesPlayed: 10, wins: 6, winRate: 0, avgKills: 4, avgCs: 250 });
+  });
+
+  it("normalizes the paginated tournament catalog", () => {
+    const catalog = normalizeTournamentCatalog({
+      tournaments: [{
+        tournamentId: "lol-worlds_2026",
+        name: "Worlds 2026",
+        league: { name: "World Championship", slug: "worlds" },
+        startDate: "2026-10-20T00:00:00Z",
+        endDate: "2026-11-20T00:00:00Z",
+        isInternational: true,
+      }],
+    });
+    expect(catalog).toEqual([expect.objectContaining({
+      providerId: "lol-worlds_2026",
+      name: "Worlds 2026",
+      leagueName: "World Championship",
+      leagueSlug: "worlds",
+      isInternational: true,
+      startTime: "2026-10-20T00:00:00.000Z",
+    })]);
   });
 });

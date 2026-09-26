@@ -29,6 +29,7 @@ function testProvider() {
   const getGamePlayerStats = vi.fn(async () => ({ stats: [], raw: {} }));
   const provider: EsportsDataProvider = {
     name: "cito",
+    getTournaments: async () => [],
     getTournament: async () => ({
       provider: "cito", providerId: tournamentProviderId, name: "Stage Sync Integration",
       startTime: null, endTime: null, raw: {},

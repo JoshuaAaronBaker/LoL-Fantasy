@@ -6,6 +6,7 @@ import type {
   PlayerAggregateStats,
   TeamRoster,
   TournamentTeam,
+  TournamentCatalogEntry,
 } from "@/lib/domain/types";
 
 export interface PlayerStatsResult {
@@ -15,6 +16,7 @@ export interface PlayerStatsResult {
 
 export interface EsportsDataProvider {
   readonly name: "cito";
+  getTournaments(): Promise<TournamentCatalogEntry[]>;
   getTournament(tournamentId: string): Promise<NormalizedTournament>;
   getTournamentTeams(tournamentId: string): Promise<TournamentTeam[]>;
   getTeamRoster(teamId: string): Promise<TeamRoster>;

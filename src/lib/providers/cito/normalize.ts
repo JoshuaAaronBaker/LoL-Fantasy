@@ -9,6 +9,7 @@ import type {
   PlayerAggregateStats,
   TeamRoster,
   TournamentTeam,
+  TournamentCatalogEntry,
 } from "@/lib/domain/types";
 
 type JsonRecord = Record<string, unknown>;
@@ -224,6 +225,27 @@ export function normalizeTournament(payload: unknown): NormalizedTournament {
     endTime: dateText(source, ["endTime", "endDate", "endsAt"]),
     raw: payload,
   };
+}
+
+export function normalizeTournamentCatalog(payload: unknown): TournamentCatalogEntry[] {
+  return arrayAt(payload, ["tournaments", "items"]).map((value, index) => {
+    const source = record(value, `tournament catalog entry ${index + 1}`);
+    const leagueValue = valueAt(source, ["league"]);
+    const league = leagueValue && typeof leagueValue === "object"
+      ? record(leagueValue, `tournament catalog league ${index + 1}`)
+      : {};
+    return {
+      provider: "cito" as const,
+      providerId: text(source, ["tournamentId", "id", "tournament_id", "slug"], true)!,
+      name: text(source, ["name", "tournamentName", "displayName", "slug"], true)!,
+      startTime: dateText(source, ["startDate", "startTime", "startsAt", "date"]),
+      endTime: dateText(source, ["endDate", "endTime", "endsAt"]),
+      leagueName: text(league, ["name", "shortName"]),
+      leagueSlug: text(league, ["slug", "id"]),
+      isInternational: booleanValue(source, ["isInternational"]) ?? false,
+      raw: value,
+    };
+  });
 }
 
 export function normalizeMatch(payload: unknown, tournamentId: string): NormalizedMatch {

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
 import type { EsportsDataProvider, PlayerStatsResult } from "./esports-data-provider";
-import type { NormalizedGame, PlayerAggregateStats, TeamRoster, TournamentTeam } from "@/lib/domain/types";
+import type { NormalizedGame, PlayerAggregateStats, TeamRoster, TournamentCatalogEntry, TournamentTeam } from "@/lib/domain/types";
 import {
   normalizeGame,
   normalizeGames,
@@ -30,6 +30,10 @@ export class FixtureEsportsDataProvider implements EsportsDataProvider {
   static async fromFile(path: string) {
     const contents = await readFile(path, "utf8");
     return new FixtureEsportsDataProvider(fixtureSchema.parse(JSON.parse(contents)));
+  }
+
+  async getTournaments(): Promise<TournamentCatalogEntry[]> {
+    throw new Error("The completed-match fixture does not include a tournament catalog.");
   }
 
   async getTournament() {

@@ -12,6 +12,12 @@ export interface NormalizedTournament {
   raw: unknown;
 }
 
+export interface TournamentCatalogEntry extends NormalizedTournament {
+  leagueName: string | null;
+  leagueSlug: string | null;
+  isInternational: boolean;
+}
+
 export interface NormalizedTeam {
   provider: "cito";
   providerId: string;

@@ -151,6 +151,17 @@ up into the single cumulative leaderboard at `/worlds`; no private leagues or in
 Once a stage locks, the Worlds hub also shows its tie-aware leading rosters, winning captain and
 lineup, live/final scoring state, and a link to the full stage leaderboard.
 
+Operators can perform the provider discovery and connection workflow at `/ops/worlds`. Grant access
+from a trusted terminal; the browser cannot add operators or edit the allowlist:
+
+```bash
+npm run operator:grant -- --username <username>
+```
+
+The console reviews provider candidates before connection, refreshes the tournament team field, shows
+stage readiness, and prepares an explicit `stage:bootstrap` command with the current team IDs. The
+long-running roster and pricing bootstrap stays in the terminal until it can run in a durable worker.
+
 ## Verification
 
 ```bash

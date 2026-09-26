@@ -6,6 +6,7 @@ import {
   normalizeMatch,
   normalizePlayerStats,
   normalizeTournament,
+  normalizeTournamentCatalog,
   normalizeTournamentTeams,
   normalizeTeamRoster,
   normalizePlayerAggregateStats,
@@ -98,6 +99,11 @@ export class CitoEsportsDataProvider implements EsportsDataProvider {
 
   async getTournament(tournamentId: string) {
     return normalizeTournament(await this.get(`/lol/tournaments/${encodeURIComponent(tournamentId)}`));
+  }
+
+
+  async getTournaments() {
+    return normalizeTournamentCatalog(await this.get("/lol/tournaments?limit=100&offset=0"));
   }
 
   async getTournamentTeams(tournamentId: string) {

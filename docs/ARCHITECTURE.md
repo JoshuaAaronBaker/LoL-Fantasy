@@ -6,6 +6,7 @@
 - `src/lib/ingestion` orchestrates completed-game loading and transactional persistence.
 - `src/lib/stages` builds immutable stage catalogs and price snapshots.
 - `src/lib/competitions` maps a product competition to its provider tournament and builds cumulative standings.
+- `src/lib/operators` centralizes the server-only operator allowlist check and restricted read models.
 - `src/lib/rosters` exposes safe stage and saved-roster read models.
 - `src/lib/leaderboard` materializes roster totals and exposes lock-aware standings read models.
 - `src/lib/supabase` owns cookie-backed authentication clients and session refresh.
@@ -39,6 +40,11 @@ the roster and pricing pipeline never loads eliminated teams for the next window
 stage, while the Worlds read model sums their stage-score snapshots into one global leaderboard.
 The seeded Worlds shell may exist without a provider tournament, which keeps the UI honest while a
 future tournament feed is not yet available.
+
+The Worlds operator console discovers a bounded current provider catalog, stores only championship
+candidates, and requires an explicit selection before connecting the product competition. Operator
+identity is rechecked from Supabase Auth and the server-managed `fantasy_operators` allowlist at the
+data boundary and again for every action. The allowlist and discovery records have no browser grants.
 
 The competition read model also derives stage podiums directly from the same materialized score
 snapshots. It returns every roster in the top three competitive ranks so boundary ties are preserved,

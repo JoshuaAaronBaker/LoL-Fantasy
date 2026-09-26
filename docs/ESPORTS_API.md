@@ -26,6 +26,18 @@ GET /api/v1/lol/teams/{teamSlug}/roster
 GET /api/v1/lol/players/{playerId}/stats
 ```
 
+## Tournament discovery
+
+```text
+GET /api/v1/lol/tournaments?limit=100&offset=0
+```
+
+The operator console filters this current catalog page to the World Championship league/name/ID,
+excludes adjacent qualifying and World Cup events, and persists candidates for explicit review. A
+candidate is never connected automatically. The current page is intentionally one request so the
+interactive action remains within the free-tier request budget; the terminal remains available for
+known IDs outside that current catalog window.
+
 Catalog calls run sequentially with a minimum interval compatible with the free 10-request-per-minute allowance. Stale roster reports are preserved as operator warnings rather than silently treated as fresh data.
 
 World Championship roster windows add an operator-confirmed provider-team whitelist to this chain.
