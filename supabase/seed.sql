@@ -1,0 +1,2 @@
+-- The default scoring ruleset is part of the versioned foundation migration.
+-- Keep this file for future non-production local demo data only.

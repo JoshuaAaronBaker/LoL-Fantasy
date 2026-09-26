@@ -1,0 +1,69 @@
+{
+  "fixture": true,
+  "label": "Synthetic completed-game contract fixture — never production data",
+  "tournament": {
+    "data": {
+      "id": "sample-worlds-2026",
+      "name": "Sample Worlds Pipeline Fixture",
+      "startDate": "2026-09-01T00:00:00Z",
+      "endDate": "2026-11-01T00:00:00Z"
+    }
+  },
+  "match": {
+    "data": {
+      "id": "sample-match-1",
+      "tournamentId": "sample-worlds-2026",
+      "stageName": "Pipeline validation",
+      "startTime": "2026-09-25T18:00:00Z",
+      "status": "complete",
+      "teams": [
+        { "id": "sample-blue", "name": "Sample Blue", "abbreviation": "BLU" },
+        { "id": "sample-red", "name": "Sample Red", "abbreviation": "RED" }
+      ]
+    }
+  },
+  "games": {
+    "data": {
+      "games": [
+        {
+          "id": "sample-game-1",
+          "matchId": "sample-match-1",
+          "gameNumber": 1,
+          "status": "completed",
+          "winnerTeamId": "sample-blue"
+        }
+      ]
+    }
+  },
+  "gameDetails": {
+    "sample-game-1": {
+      "data": {
+        "id": "sample-game-1",
+        "matchId": "sample-match-1",
+        "gameNumber": 1,
+        "status": "completed",
+        "winnerTeamId": "sample-blue",
+        "startedAt": "2026-09-25T18:03:00Z",
+        "endedAt": "2026-09-25T18:37:21Z"
+      }
+    }
+  },
+  "gameStats": {
+    "sample-game-1": {
+      "data": {
+        "players": [
+          { "player": { "id": "sample-blue-top", "displayName": "Sample Top" }, "team": { "id": "sample-blue", "name": "Sample Blue", "abbreviation": "BLU" }, "role": "TOP", "kills": 3, "deaths": 1, "assists": 8, "cs": 251 },
+          { "player": { "id": "sample-blue-jungle", "displayName": "Sample Jungle" }, "team": { "id": "sample-blue", "name": "Sample Blue", "abbreviation": "BLU" }, "role": "JUNGLE", "kills": 2, "deaths": 2, "assists": 13, "cs": 167 },
+          { "player": { "id": "sample-blue-mid", "displayName": "Sample Mid" }, "team": { "id": "sample-blue", "name": "Sample Blue", "abbreviation": "BLU" }, "role": "MID", "kills": 8, "deaths": 2, "assists": 11, "cs": 287 },
+          { "player": { "id": "sample-blue-bot", "displayName": "Sample Bot" }, "team": { "id": "sample-blue", "name": "Sample Blue", "abbreviation": "BLU" }, "role": "ADC", "kills": 6, "deaths": 1, "assists": 9, "cs": 306 },
+          { "player": { "id": "sample-blue-support", "displayName": "Sample Support" }, "team": { "id": "sample-blue", "name": "Sample Blue", "abbreviation": "BLU" }, "role": "SUPPORT", "kills": 0, "deaths": 3, "assists": 19, "cs": 42 },
+          { "player": { "id": "sample-red-top", "displayName": "Opponent Top" }, "team": { "id": "sample-red", "name": "Sample Red", "abbreviation": "RED" }, "role": "TOP", "kills": 1, "deaths": 4, "assists": 3, "cs": 224 },
+          { "player": { "id": "sample-red-jungle", "displayName": "Opponent Jungle" }, "team": { "id": "sample-red", "name": "Sample Red", "abbreviation": "RED" }, "role": "JUNGLE", "kills": 2, "deaths": 5, "assists": 4, "cs": 141 },
+          { "player": { "id": "sample-red-mid", "displayName": "Opponent Mid" }, "team": { "id": "sample-red", "name": "Sample Red", "abbreviation": "RED" }, "role": "MID", "kills": 2, "deaths": 3, "assists": 5, "cs": 262 },
+          { "player": { "id": "sample-red-bot", "displayName": "Opponent Bot" }, "team": { "id": "sample-red", "name": "Sample Red", "abbreviation": "RED" }, "role": "BOT", "kills": 3, "deaths": 4, "assists": 3, "cs": 278 },
+          { "player": { "id": "sample-red-support", "displayName": "Opponent Support" }, "team": { "id": "sample-red", "name": "Sample Red", "abbreviation": "RED" }, "role": "SUPPORT", "kills": 0, "deaths": 5, "assists": 7, "cs": 38 }
+        ]
+      }
+    }
+  }
+}

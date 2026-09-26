@@ -1,0 +1,26 @@
+# Cito API integration
+
+The implementation was checked against Cito's current machine-readable references:
+
+- [Endpoint manifest](https://citoapi.com/ai/endpoints.json)
+- [League of Legends Postman collection](https://citoapi.com/postman/citoapi-league-of-legends.postman_collection.json)
+- [Authentication](https://citoapi.com/docs/authentication/)
+- [Rate limits](https://citoapi.com/docs/rate-limits/)
+
+## Completed-game request chain
+
+```text
+GET /api/v1/lol/tournaments/{tournamentId}
+GET /api/v1/lol/matches/{matchId}
+GET /api/v1/lol/matches/{matchId}/games
+GET /api/v1/lol/games/{gameId}
+GET /api/v1/lol/games/{gameId}/stats
+```
+
+All calls use `https://api.citoapi.com` and send `x-api-key` from the server-only `CITO_API_KEY` environment variable. The client times out after 15 seconds, never retries ordinary `4xx` responses, and retries `429`/`5xx` responses up to three times while honoring `Retry-After`.
+
+Cito payloads are validated at the adapter boundary. The original payload is retained for debugging and future re-normalization, while fantasy scoring reads only normalized statistics.
+
+## Production caveat
+
+Cito describes itself as an independent aggregator and not an official, rights-cleared Riot feed. A production launch must separately review data licensing, branding, trademark, and commercial-use requirements.
