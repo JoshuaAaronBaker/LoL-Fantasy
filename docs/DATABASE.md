@@ -16,6 +16,7 @@ Every provider entity has a uniqueness constraint on `(provider, provider_id)`. 
 - `fantasy_scoring_rules` supports global and optional role-specific metric weights.
 - `player_game_scores` is a reproducible materialization, unique by stat row and ruleset.
 - `ingestion_runs` records status and row counts without storing credentials.
+- `stage_sync_runs` audits each stage-wide provider sync, lifecycle result, and processed row count. It is operator-only and has no client grants.
 
 ## Authentication and roster building
 
@@ -29,3 +30,7 @@ Every provider entity has a uniqueness constraint on `(provider, provider_id)`. 
 - `fantasy_roster_stage_scores` materializes base total, captain bonus, final total, and distinct games for leaderboard ranking.
 
 RLS is enabled on every table. Authenticated users can read the fantasy catalog and leaderboard totals. They can mutate only their own roster before lock, inspect only their own player breakdown before lock, and see opponent lineups after lock. The application also verifies identity in every server mutation and performs authoritative writes in a database transaction.
+
+Stage status is advanced monotonically by the operator synchronizer. The roster lock comparison uses
+`clock_timestamp()` from PostgreSQL, and completion requires at least one assigned match with every
+assigned match in a terminal provider state.

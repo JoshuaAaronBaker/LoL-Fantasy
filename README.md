@@ -89,6 +89,36 @@ Ingestion and player-score recalculation automatically refresh affected leaderbo
 npm run leaderboard:recalculate -- --stage lcs-dev-playoffs
 ```
 
+## Operate a live stage
+
+Use the stage synchronizer for the normal contest loop. On its first run, pass the complete stage
+schedule. It fetches provider data sequentially, assigns those matches, imports only newly completed
+games, refreshes the global leaderboard, and advances the stage with database time:
+
+```bash
+npm run stage:sync -- \
+  --stage lcs-dev-playoffs \
+  --matches <match-id>,<another-match-id>
+```
+
+Every later run can use the stored assignments:
+
+```bash
+npm run stage:sync -- --stage lcs-dev-playoffs
+```
+
+The lifecycle is monotonic: `OPEN` before the exact lock timestamp, then `LOCKED`, `LIVE` after play
+starts, and `COMPLETE` when every assigned match is terminal. Assign the complete schedule before
+lock so completion is based on the full contest. Completed games are skipped on routine replays to
+stay within the Cito free tier. To deliberately re-fetch settled stats after a correction:
+
+```bash
+npm run stage:sync -- --stage lcs-dev-playoffs --refresh-completed true
+```
+
+The command is idempotent and scheduler-ready: a replay with no provider or lifecycle changes is
+recorded as `UNCHANGED` and does not increment scores.
+
 ## Verification
 
 ```bash

@@ -28,6 +28,7 @@ export interface CitoClientOptions {
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
   maxRetries?: number;
+  minRequestIntervalMs?: number;
 }
 
 function retryDelay(response: Response | null, attempt: number) {
@@ -46,12 +47,21 @@ export class CitoEsportsDataProvider implements EsportsDataProvider {
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
+  private readonly minRequestIntervalMs: number;
+  private lastRequestAt = 0;
 
   constructor(private readonly options: CitoClientOptions) {
     if (!options.apiKey.trim()) throw new Error("CITO_API_KEY is required for live ingestion.");
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.timeoutMs = options.timeoutMs ?? 15_000;
     this.maxRetries = options.maxRetries ?? 3;
+    this.minRequestIntervalMs = options.minRequestIntervalMs ?? 0;
+  }
+
+  private async paceRequest() {
+    const wait = Math.max(0, this.minRequestIntervalMs - (Date.now() - this.lastRequestAt));
+    if (wait) await sleep(wait);
+    this.lastRequestAt = Date.now();
   }
 
   private async get(path: string): Promise<unknown> {
@@ -59,6 +69,7 @@ export class CitoEsportsDataProvider implements EsportsDataProvider {
     for (let attempt = 0; attempt <= this.maxRetries; attempt += 1) {
       let response: Response | null = null;
       try {
+        await this.paceRequest();
         response = await this.fetchImpl(`${BASE_URL}${path}`, {
           headers: { accept: "application/json", "x-api-key": this.options.apiKey },
           signal: AbortSignal.timeout(this.timeoutMs),

@@ -20,6 +20,7 @@
     "stage:bootstrap": "tsx scripts/bootstrap-stage.ts",
     "stage:set-lock": "tsx scripts/set-stage-lock.ts",
     "stage:assign-matches": "tsx scripts/assign-stage-matches.ts",
+    "stage:sync": "tsx scripts/sync-stage.ts",
     "leaderboard:recalculate": "tsx scripts/recalculate-leaderboard.ts",
     "test:e2e": "playwright test"
   },

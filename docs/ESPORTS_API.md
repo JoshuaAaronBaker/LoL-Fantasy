@@ -32,6 +32,15 @@ All calls use `https://api.citoapi.com` and send `x-api-key` from the server-onl
 
 Cito payloads are validated at the adapter boundary. The original payload is retained for debugging and future re-normalization, while fantasy scoring reads only normalized statistics.
 
+## Repeated stage synchronization
+
+`npm run stage:sync` paces calls at just over six seconds, fetches tournament metadata once, then processes configured matches in order.
+For each match it requests the match and game list, but only requests game details and player stats
+for completed games that are not already stored. This keeps normal polling economical while retaining
+an explicit `--refresh-completed true` repair path for provider corrections. Every imported game
+triggers idempotent player and roster score materialization; the final stage-wide pass converges the
+global leaderboard even when no new game was found.
+
 ## Production caveat
 
 Cito describes itself as an independent aggregator and not an official, rights-cleared Riot feed. A production launch must separately review data licensing, branding, trademark, and commercial-use requirements.

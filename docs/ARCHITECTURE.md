@@ -26,6 +26,12 @@ Browser drafts are convenience state only. A roster submission contains IDs, the
 
 Fantasy stages only score explicitly assigned matches through `matches.stage_id`. Each ingestion, player-score replay, roster submission, or operator replay converges `fantasy_roster_player_scores` and `fantasy_roster_stage_scores` on the same totals. Leaderboards expose usernames and totals while the stage is open, but return opponent lineup breakdowns only after database lock time.
 
+The stage synchronizer is the operational boundary for a live contest. The first run can assign an
+explicit complete match schedule; later runs reuse that manifest. It reads Cito sequentially,
+skips already-ingested completed games by default, refreshes materialized leaderboard scores, and
+advances `OPEN → LOCKED → LIVE → COMPLETE` from database time and assigned-match state. Lifecycle
+transitions are monotonic, and every run is audited independently from lower-level ingestion runs.
+
 ## Deployment direction
 
-The Next.js application is Vercel-compatible. For hosted Supabase, `DATABASE_URL` should be a server-only Supavisor transaction-pooler URL; the PostgreSQL client disables prepared statements for pooler compatibility. Hosted Auth must keep email confirmation disabled because usernames map to internal synthetic addresses. Scheduled ingestion, private leagues, and Realtime are later milestones.
+The Next.js application is Vercel-compatible. For hosted Supabase, `DATABASE_URL` should be a server-only Supavisor transaction-pooler URL; the PostgreSQL client disables prepared statements for pooler compatibility. Hosted Auth must keep email confirmation disabled because usernames map to internal synthetic addresses. The stage-sync command is ready to run from a hosted scheduler; deployment wiring, monitoring, and Realtime are later milestones. The product intentionally uses one global stage leaderboard rather than private leagues.
