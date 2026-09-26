@@ -17,6 +17,7 @@
     "ingest:fixture": "tsx scripts/ingest-fixture.ts",
     "ingest:cito": "tsx scripts/ingest-cito.ts",
     "scores:recalculate": "tsx scripts/recalculate-scores.ts",
+    "competition:configure": "tsx scripts/configure-competition.ts",
     "stage:bootstrap": "tsx scripts/bootstrap-stage.ts",
     "stage:set-lock": "tsx scripts/set-stage-lock.ts",
     "stage:assign-matches": "tsx scripts/assign-stage-matches.ts",

@@ -5,6 +5,7 @@
 - `src/lib/providers` owns vendor HTTP calls and converts vendor payloads into normalized domain values.
 - `src/lib/ingestion` orchestrates completed-game loading and transactional persistence.
 - `src/lib/stages` builds immutable stage catalogs and price snapshots.
+- `src/lib/competitions` maps a product competition to its provider tournament and builds cumulative standings.
 - `src/lib/rosters` exposes safe stage and saved-roster read models.
 - `src/lib/leaderboard` materializes roster totals and exposes lock-aware standings read models.
 - `src/lib/supabase` owns cookie-backed authentication clients and session refresh.
@@ -31,6 +32,13 @@ explicit complete match schedule; later runs reuse that manifest. It reads Cito 
 skips already-ingested completed games by default, refreshes materialized leaderboard scores, and
 advances `OPEN → LOCKED → LIVE → COMPLETE` from database time and assigned-match state. Lifecycle
 transitions are monotonic, and every run is audited independently from lower-level ingestion runs.
+
+World Championship fantasy is modeled as one `fantasy_competitions` record backed by many immutable
+tournament stages. An operator confirms the surviving team IDs before each stage is bootstrapped, so
+the roster and pricing pipeline never loads eliminated teams for the next window. Users redraft per
+stage, while the Worlds read model sums their stage-score snapshots into one global leaderboard.
+The seeded Worlds shell may exist without a provider tournament, which keeps the UI honest while a
+future tournament feed is not yet available.
 
 ## Deployment direction
 

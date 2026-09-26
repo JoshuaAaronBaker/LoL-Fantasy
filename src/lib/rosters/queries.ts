@@ -28,6 +28,7 @@ export interface StageRosterView {
   slug: string;
   name: string;
   tournamentName: string;
+  competitionSlug: string | null;
   status: string;
   lockAt: string;
   salaryCap: number;
@@ -41,18 +42,19 @@ export interface StageRosterView {
 export async function getStageRosterView(stageSlug: string, userId: string): Promise<StageRosterView | null> {
   const sql = getDatabase();
   const stages = await sql<Array<{
-    id: string; slug: string; name: string; tournament_name: string; status: string;
+    id: string; slug: string; name: string; tournament_name: string; competition_slug: string | null; status: string;
     roster_lock_time: string | null; salary_cap: string; max_players_per_team: number; pricing_method: string | null;
     database_now: string;
   }>>`
-    select s.id, s.slug, s.name, t.name as tournament_name, s.status,
+    select s.id, s.slug, s.name, t.name as tournament_name, c.slug as competition_slug, s.status,
       s.roster_lock_time::text, s.salary_cap::text, s.max_players_per_team,
       min(psp.pricing_method) as pricing_method, clock_timestamp()::text as database_now
     from tournament_stages s
     join tournaments t on t.id = s.tournament_id
+    left join fantasy_competitions c on c.tournament_id = t.id
     left join player_stage_prices psp on psp.stage_id = s.id
     where s.slug = ${stageSlug}
-    group by s.id, t.name
+    group by s.id, t.name, c.slug
     order by s.created_at desc
     limit 1
   `;
@@ -91,6 +93,7 @@ export async function getStageRosterView(stageSlug: string, userId: string): Pro
     slug: stage.slug,
     name: stage.name,
     tournamentName: stage.tournament_name,
+    competitionSlug: stage.competition_slug,
     status: stage.status,
     lockAt: stage.roster_lock_time,
     salaryCap: Number(stage.salary_cap),

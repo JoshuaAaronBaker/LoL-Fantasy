@@ -11,10 +11,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <Card className="w-full p-7 sm:p-9">
         <span className="grid size-11 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-300"><LogIn className="size-5" /></span>
         <h1 className="mt-6 text-3xl font-black tracking-tight text-white">Welcome back</h1>
-        <p className="mt-2 text-sm leading-6 text-zinc-500">Log in to build and manage your LCS lineup.</p>
+        <p className="mt-2 text-sm leading-6 text-zinc-500">Log in to build your Worlds lineups and track the global standings.</p>
         <AuthForm mode="login" action={loginAction} returnTo={returnTo} />
       </Card>
     </main>
   );
 }
-

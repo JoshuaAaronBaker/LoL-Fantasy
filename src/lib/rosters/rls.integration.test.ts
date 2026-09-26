@@ -68,8 +68,15 @@ suite("roster RLS", () => {
       await tx`select set_config('request.jwt.claim.sub', ${userA}, true)`;
       await tx`set local role authenticated`;
       const profiles = await tx<Array<{ id: string }>>`select id from profiles where id in (${userA}, ${userB})`;
-      const rosters = await tx<Array<{ user_id: string }>>`select user_id from fantasy_rosters`;
-      const entries = await tx<Array<{ count: number }>>`select count(*)::int as count from fantasy_roster_players`;
+      const rosters = await tx<Array<{ user_id: string }>>`
+        select user_id from fantasy_rosters
+        where stage_id = (select id from tournament_stages where slug = 'rls-stage')
+      `;
+      const entries = await tx<Array<{ count: number }>>`
+        select count(*)::int as count from fantasy_roster_players rp
+        join fantasy_rosters r on r.id = rp.roster_id
+        where r.stage_id = (select id from tournament_stages where slug = 'rls-stage')
+      `;
       const tournaments = await tx<Array<{ count: number }>>`
         select count(*)::int as count from tournaments where provider_id = ${tournamentProviderId}
       `;
@@ -85,7 +92,11 @@ suite("roster RLS", () => {
     await sql!.begin(async (tx) => {
       await tx`select set_config('request.jwt.claim.sub', ${userA}, true)`;
       await tx`set local role authenticated`;
-      const rosters = await tx<Array<{ user_id: string }>>`select user_id from fantasy_rosters order by user_id`;
+      const rosters = await tx<Array<{ user_id: string }>>`
+        select user_id from fantasy_rosters
+        where stage_id = (select id from tournament_stages where slug = 'rls-stage')
+        order by user_id
+      `;
       const updated = await tx<Array<{ id: string }>>`
         update fantasy_rosters set total_salary = total_salary + 1 where user_id = ${userA} returning id
       `;

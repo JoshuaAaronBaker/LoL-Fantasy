@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Trophy } from "lucide-react";
+import { ArrowLeft, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { RosterBuilder } from "@/components/roster-builder";
 import { getStageRosterView } from "@/lib/rosters/queries";
@@ -18,6 +18,7 @@ export default async function PlayStagePage({ params }: { params: Promise<{ stag
 
   return (
     <main className="mx-auto max-w-[90rem] px-4 py-8 sm:px-6 sm:py-12">
+      {stage.competitionSlug && <Link href={`/${stage.competitionSlug}`} className="mb-6 inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-zinc-500 transition hover:text-lime-300"><ArrowLeft className="size-3.5" />Back to {stage.competitionSlug}</Link>}
       <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Badge className="border-lime-300/20 bg-lime-300/8 text-lime-300">Fantasy stage · {stage.status === "OPEN" ? "Open roster builder" : stage.status}</Badge>

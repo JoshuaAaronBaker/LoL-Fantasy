@@ -33,6 +33,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). The fixture is synthetic and is visibly labeled everywhere it appears.
 
+The primary product route is [http://localhost:3000/worlds](http://localhost:3000/worlds). It remains in a clearly labeled waiting state until a real World Championship tournament is connected; development LCS data is never presented as Worlds data.
+
 Copy the local API URL and publishable key from `supabase status -o env` into `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. If Supabase prints a different database connection, update `DATABASE_URL`. Never prefix the Cito key with `NEXT_PUBLIC_`.
 
 Accounts use a public username plus a Supabase-managed password. No email is collected and password recovery is intentionally unavailable in this MVP.
@@ -67,6 +69,18 @@ npm run stage:bootstrap -- \
   --stage lcs-dev-playoffs \
   --name "LCS Development Playoffs" \
   --lock-at 2099-01-01T00:00:00.000Z
+```
+
+For World Championship roster windows, explicitly supply only the teams still alive at the start of
+that round. The command rejects duplicate or unknown provider team IDs before loading rosters:
+
+```bash
+npm run stage:bootstrap -- \
+  --tournament <worlds-tournament-id> \
+  --stage worlds-<round> \
+  --name "Worlds <Round>" \
+  --lock-at <future-ISO-timestamp> \
+  --teams <team-slug>,<another-team-slug>
 ```
 
 Repeating the command for an open stage is a no-op. Change a development lock with:
@@ -118,6 +132,22 @@ npm run stage:sync -- --stage lcs-dev-playoffs --refresh-completed true
 
 The command is idempotent and scheduler-ready: a replay with no provider or lifecycle changes is
 recorded as `UNCHANGED` and does not increment scores.
+
+## Connect the World Championship
+
+The seeded `worlds` competition is deliberately provider-neutral while the next tournament feed is
+unavailable. Once Cito publishes the tournament, connect it without changing application code:
+
+```bash
+npm run competition:configure -- \
+  --competition worlds \
+  --tournament <worlds-tournament-id> \
+  --name "World Championship Fantasy" \
+  --description "Redraft every round and climb one global leaderboard."
+```
+
+Then bootstrap one immutable stage per roster window with `--teams`. Stage scores automatically roll
+up into the single cumulative leaderboard at `/worlds`; no private leagues or invite codes are used.
 
 ## Verification
 

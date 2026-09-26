@@ -20,6 +20,7 @@ Every provider entity has a uniqueness constraint on `(provider, provider_id)`. 
 
 ## Authentication and roster building
 
+- `fantasy_competitions` maps a stable product route such as `worlds` to an optional provider tournament. A draft record can render before the provider publishes that tournament.
 - `profiles` maps a Supabase Auth identity to a case-preserving, case-insensitively unique username.
 - `tournament_teams` records the teams discovered in a provider tournament.
 - `tournament_players` snapshots a player's stage team, role, starter status, eligibility, and roster freshness.
@@ -34,3 +35,7 @@ RLS is enabled on every table. Authenticated users can read the fantasy catalog 
 Stage status is advanced monotonically by the operator synchronizer. The roster lock comparison uses
 `clock_timestamp()` from PostgreSQL, and completion requires at least one assigned match with every
 assigned match in a terminal provider state.
+
+The cumulative Worlds leaderboard is a read model over `fantasy_roster_stage_scores`: totals are
+grouped by user across every stage belonging to the competition's tournament. Stage price and player
+snapshots remain the authoritative historical inputs.

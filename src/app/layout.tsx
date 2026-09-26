@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
-import { LogOut, Trophy, UserRound } from "lucide-react";
+import { Globe2, LogOut, Trophy, UserRound } from "lucide-react";
 import { logoutAction } from "@/app/auth/actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "LoL Fantasy",
-  description: "Build an LCS fantasy roster from real esports data.",
+  description: "Build World Championship fantasy rosters and compete on one global leaderboard.",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -33,9 +33,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
                 <span>LoL Fantasy</span>
               </Link>
               <nav className="flex items-center gap-2">
+                <Link href="/worlds" className="hidden items-center gap-2 rounded-lg px-3 py-2 text-xs font-black uppercase tracking-wider text-zinc-400 transition hover:bg-white/5 hover:text-white sm:flex"><Globe2 className="size-3.5" />Worlds</Link>
                 {user ? <>
-                  <Link href="/play/lcs-dev-playoffs" className="hidden rounded-lg px-3 py-2 text-xs font-black uppercase tracking-wider text-zinc-400 transition hover:bg-white/5 hover:text-white sm:block">Build lineup</Link>
-                  <Link href="/play/lcs-dev-playoffs/leaderboard" className="hidden rounded-lg px-3 py-2 text-xs font-black uppercase tracking-wider text-zinc-400 transition hover:bg-white/5 hover:text-white md:block">Standings</Link>
+                  <Link href="/worlds#standings" className="hidden rounded-lg px-3 py-2 text-xs font-black uppercase tracking-wider text-zinc-400 transition hover:bg-white/5 hover:text-white md:block">Standings</Link>
                   <span className="hidden items-center gap-2 text-xs font-bold text-zinc-500 sm:flex"><UserRound className="size-3.5" />{String(user.user_metadata?.username ?? "Player")}</span>
                   <form action={logoutAction}><button type="submit" aria-label="Log out" className="grid size-9 place-items-center rounded-lg border border-white/8 text-zinc-500 transition hover:text-rose-300"><LogOut className="size-4" /></button></form>
                 </> : <>

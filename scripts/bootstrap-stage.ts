@@ -6,12 +6,14 @@ import { pricePlayers } from "../src/lib/domain/pricing";
 import type { PlayerAggregateStats, TeamRoster, TeamRosterPlayer } from "../src/lib/domain/types";
 import { CitoApiError, CitoEsportsDataProvider } from "../src/lib/providers/cito/client";
 import { getExistingStage, persistStageCatalog, type CatalogPlayer } from "../src/lib/stages/bootstrap";
+import { selectStageTeams } from "../src/lib/stages/team-eligibility";
 
 const args = parseFlags(process.argv.slice(2));
 const tournamentId = args.required("tournament");
 const slug = args.required("stage");
 const name = args.required("name");
 const lockAt = new Date(args.required("lock-at"));
+const eligibleTeamIds = args.optional("teams")?.split(",");
 if (Number.isNaN(lockAt.valueOf()) || lockAt <= new Date()) throw new Error("--lock-at must be a future ISO timestamp.");
 
 const env = getServerEnv();
@@ -43,7 +45,8 @@ try {
     process.exitCode = 0;
   } else {
     const tournament = await paced("tournament", () => provider.getTournament(tournamentId));
-    const teams = await paced("tournament matches", () => provider.getTournamentTeams(tournamentId));
+    const discoveredTeams = await paced("tournament matches", () => provider.getTournamentTeams(tournamentId));
+    const teams = selectStageTeams(discoveredTeams, eligibleTeamIds);
     const rosters: TeamRoster[] = [];
     const rosterPlayers: Array<{ row: TeamRosterPlayer; rosterIndex: number }> = [];
     for (const source of teams) {

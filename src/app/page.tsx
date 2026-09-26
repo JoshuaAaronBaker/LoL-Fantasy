@@ -1,19 +1,17 @@
 import Link from "next/link";
-import { ArrowRight, Braces, ShieldCheck, Users } from "lucide-react";
+import { ArrowRight, Braces, Globe2, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { PipelineEmptyState } from "@/components/pipeline-empty-state";
 import { getLatestGame } from "@/lib/db/queries";
-import { getFeaturedStage } from "@/lib/rosters/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   let latest = null;
   let databaseUnavailable = false;
-  let featuredStage = null;
   try {
-    [latest, featuredStage] = await Promise.all([getLatestGame(), getFeaturedStage()]);
+    latest = await getLatestGame();
   } catch {
     databaseUnavailable = true;
   }
@@ -21,15 +19,15 @@ export default async function Home() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
       <div className="max-w-3xl">
-        <Badge className="border-lime-300/20 bg-lime-300/8 text-lime-300">LCS Fantasy · Development season</Badge>
+        <Badge className="border-lime-300/20 bg-lime-300/8 text-lime-300"><Globe2 className="mr-1.5 size-3" />World Championship Fantasy</Badge>
         <h1 className="mt-6 text-4xl font-black leading-[0.98] tracking-[-0.04em] text-white sm:text-6xl">
           Draft the five.
           <br />Own every fight.
         </h1>
         <p className="mt-6 max-w-2xl text-base leading-7 text-zinc-400 sm:text-lg">
-          Build a role-complete LCS roster from real competitive data. Stay under the cap, pick your captain, and lock in before the stage begins.
+          Redraft a role-complete roster through every World Championship stage. Stay under the cap, follow the surviving teams, and climb one global leaderboard.
         </p>
-        {featuredStage && <Link href={`/play/${featuredStage.slug}`} className="mt-7 inline-flex items-center gap-2 rounded-xl bg-lime-300 px-5 py-3 text-sm font-black text-zinc-950 transition hover:bg-lime-200">Build your lineup <ArrowRight className="size-4" /></Link>}
+        <Link href="/worlds" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-lime-300 px-5 py-3 text-sm font-black text-zinc-950 transition hover:bg-lime-200">Enter Worlds <ArrowRight className="size-4" /></Link>
       </div>
 
       <section className="mt-12">

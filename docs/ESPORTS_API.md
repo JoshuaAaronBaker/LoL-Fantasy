@@ -28,6 +28,11 @@ GET /api/v1/lol/players/{playerId}/stats
 
 Catalog calls run sequentially with a minimum interval compatible with the free 10-request-per-minute allowance. Stale roster reports are preserved as operator warnings rather than silently treated as fresh data.
 
+World Championship roster windows add an operator-confirmed provider-team whitelist to this chain.
+Tournament discovery still verifies each team, but roster and player-stat calls run only for the
+surviving teams selected for that stage. Unknown or duplicate team identifiers fail before the stage
+catalog transaction begins.
+
 All calls use `https://api.citoapi.com` and send `x-api-key` from the server-only `CITO_API_KEY` environment variable. The client times out after 15 seconds, never retries ordinary `4xx` responses, and retries `429`/`5xx` responses up to three times while honoring `Retry-After`.
 
 Cito payloads are validated at the adapter boundary. The original payload is retained for debugging and future re-normalization, while fantasy scoring reads only normalized statistics.
