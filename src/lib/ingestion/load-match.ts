@@ -11,11 +11,10 @@ export async function loadCompletedMatch(
   provider: EsportsDataProvider,
   options: LoadMatchOptions,
 ): Promise<IngestionBundle> {
-  const [tournament, match, listedGames] = await Promise.all([
-    provider.getTournament(options.tournamentId),
-    provider.getMatch(options.matchId, options.tournamentId),
-    provider.getMatchGames(options.matchId),
-  ]);
+  // These calls are intentionally sequential to stay within low-volume provider plans.
+  const tournament = await provider.getTournament(options.tournamentId);
+  const match = await provider.getMatch(options.matchId, options.tournamentId);
+  const listedGames = await provider.getMatchGames(options.matchId);
 
   const selected = options.gameId
     ? listedGames.filter((game) => game.providerId === options.gameId)
@@ -29,13 +28,14 @@ export async function loadCompletedMatch(
     );
   }
 
-  const games = await Promise.all(
-    selected.map(async (listedGame) => {
-      const game = await provider.getGame(listedGame.providerId, match.providerId);
-      const result = await provider.getGamePlayerStats(game);
-      return { game, stats: result.stats, statsRaw: result.raw };
-    }),
-  );
+  // Keep provider calls sequential. Cito's free tier is intentionally low-volume,
+  // and parallel game/stat requests create a retry thundering herd at minute boundaries.
+  const games: IngestionBundle["games"] = [];
+  for (const listedGame of selected) {
+    const game = await provider.getGame(listedGame.providerId, match.providerId);
+    const result = await provider.getGamePlayerStats(game);
+    games.push({ game, stats: result.stats, statsRaw: result.raw });
+  }
 
   return { tournament, match, games };
 }

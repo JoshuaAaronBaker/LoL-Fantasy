@@ -13,6 +13,22 @@ function payloadHash(value: unknown) {
   return createHash("sha256").update(json(value)).digest("hex");
 }
 
+function scoringStatsHash(stats: IngestionBundle["games"][number]["stats"]) {
+  const canonical = stats
+    .map((stat) => ({
+      playerId: stat.player.providerId,
+      teamId: stat.team.providerId,
+      role: stat.role,
+      kills: stat.kills,
+      deaths: stat.deaths,
+      assists: stat.assists,
+      cs: stat.cs,
+      won: stat.won,
+    }))
+    .sort((left, right) => left.playerId.localeCompare(right.playerId));
+  return payloadHash(canonical);
+}
+
 function cleanError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return message.replace(/cito_(live|test)_[A-Za-z0-9_-]+/g, "[REDACTED]").slice(0, 2_000);
@@ -123,7 +139,9 @@ export async function persistIngestionBundle(
       let unchangedGames = 0;
 
       for (const item of bundle.games) {
-        const hash = payloadHash(item.statsRaw);
+        // Vendor envelopes can contain volatile metadata. Idempotency is based on the
+        // normalized authoritative fields that can affect fantasy scoring.
+        const hash = scoringStatsHash(item.stats);
         const previous = await tx<Array<{ stats_payload_hash: string | null }>>`
           select stats_payload_hash from games
           where provider = ${item.game.provider} and provider_id = ${item.game.providerId}

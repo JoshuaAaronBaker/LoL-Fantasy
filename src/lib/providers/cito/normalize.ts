@@ -163,13 +163,21 @@ export function normalizeMatch(payload: unknown, tournamentId: string): Normaliz
 export function normalizeGame(payload: unknown, matchId: string): NormalizedGame {
   const unwrapped = unwrap(payload);
   const source = record(unwrapped, "game");
+  const statsSettled = booleanValue(source, ["statsSettled"]);
+  const providerStatus = text(source, ["status", "state", "statsStatus"])?.toUpperCase();
   return {
     provider: "cito",
     providerId: text(source, ["id", "gameId", "game_id"], true)!,
     matchProviderId: text(source, ["matchId", "match.id", "match_id"]) ?? matchId,
     gameNumber: numberValue(source, ["gameNumber", "number", "game_number"]),
-    status: text(source, ["status", "state"])?.toUpperCase() ?? "UNKNOWN",
-    winnerTeamProviderId: text(source, ["winnerTeamId", "winner.id", "winnerTeam.id", "winningTeamId"]),
+    status: statsSettled || providerStatus === "FINAL" ? "COMPLETED" : (providerStatus ?? "UNKNOWN"),
+    winnerTeamProviderId: text(source, [
+      "winnerTeamId",
+      "winner.id",
+      "winnerTeam.id",
+      "winningTeamId",
+      "winnerSlug",
+    ]),
     startedAt: dateText(source, ["startedAt", "startTime", "startDate"]),
     endedAt: dateText(source, ["endedAt", "endTime", "completedAt"]),
     raw: payload,
@@ -188,8 +196,8 @@ export function normalizePlayerStats(payload: unknown, game: NormalizedGame): No
       const teamSource = teamValue && typeof teamValue === "object" ? record(teamValue, "stat team") : source;
       const team: NormalizedTeam = {
         provider: "cito",
-        providerId: text(teamSource, ["id", "teamId", "team_id", "teamSlug"], true)!,
-        name: text(teamSource, ["name", "teamName", "team_name", "teamSlug"], true)!,
+        providerId: text(teamSource, ["id", "teamId", "team_id", "teamSlug", "slug"], true)!,
+        name: text(teamSource, ["name", "teamName", "team_name", "teamSlug", "slug"], true)!,
         abbreviation: text(teamSource, ["abbreviation", "teamCode", "code", "shortName"]),
         raw: teamValue ?? value,
       };
@@ -198,7 +206,7 @@ export function normalizePlayerStats(payload: unknown, game: NormalizedGame): No
       const playerSource =
         playerValue && typeof playerValue === "object" ? record(playerValue, "stat player") : source;
       const providerRole = text(source, ["role", "position", "lane", "player.role"]);
-      const playerId = text(playerSource, ["id", "playerId", "player_id", "slug"], true)!;
+      const playerId = text(playerSource, ["id", "playerId", "player_id", "lolPlayerId", "slug"], true)!;
       const explicitWin = booleanValue(source, ["win", "won", "isWinner", "result"]);
 
       return {
@@ -206,7 +214,11 @@ export function normalizePlayerStats(payload: unknown, game: NormalizedGame): No
         player: {
           provider: "cito",
           providerId: playerId,
-          displayName: text(playerSource, ["displayName", "name", "handle", "summonerName", "slug"], true)!,
+          displayName: text(
+            playerSource,
+            ["displayName", "name", "handle", "summonerName", "currentIgn", "slug"],
+            true,
+          )!,
           role: canonicalRole(providerRole),
           teamProviderId: team.providerId,
           raw: playerValue ?? value,
