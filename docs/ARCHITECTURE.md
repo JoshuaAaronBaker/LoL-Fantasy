@@ -50,6 +50,12 @@ The competition read model also derives stage podiums directly from the same mat
 snapshots. It returns every roster in the top three competitive ranks so boundary ties are preserved,
 and it loads lineup details only for stages whose status or database lock time permits public reveal.
 
+Long-running stage bootstrap work crosses a durable `operator_jobs` boundary. The operator action
+validates the connected tournament and selected teams, then stores an idempotent configuration-only
+payload. A separate worker exclusively claims work with `FOR UPDATE SKIP LOCKED`, owns it through a
+time-bounded lease, and calls the same reusable bootstrap service as the terminal command. Provider
+credentials remain worker environment state and never enter the queue.
+
 ## Deployment direction
 
 The Next.js application is Vercel-compatible. For hosted Supabase, `DATABASE_URL` should be a server-only Supavisor transaction-pooler URL; the PostgreSQL client disables prepared statements for pooler compatibility. Hosted Auth must keep email confirmation disabled because usernames map to internal synthetic addresses. The stage-sync command is ready to run from a hosted scheduler; deployment wiring, monitoring, and Realtime are later milestones. The product intentionally uses one global stage leaderboard rather than private leagues.

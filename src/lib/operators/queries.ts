@@ -34,6 +34,20 @@ export interface OperatorStageReadiness {
   assignedMatches: number;
 }
 
+export interface OperatorJobView {
+  id: string;
+  jobType: string;
+  status: string;
+  stageSlug: string | null;
+  stageName: string | null;
+  attempts: number;
+  maxAttempts: number;
+  errorMessage: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
 export interface OperatorWorldsView {
   competitionId: string;
   competitionName: string;
@@ -45,6 +59,7 @@ export interface OperatorWorldsView {
   candidates: OperatorTournamentCandidate[];
   teams: OperatorTournamentTeam[];
   stages: OperatorStageReadiness[];
+  jobs: OperatorJobView[];
 }
 
 export async function getOperatorWorldsView() {
@@ -106,6 +121,18 @@ export async function getOperatorWorldsViewWithDatabase(sql: Sql): Promise<Opera
         order by stage.sequence
       `
     : [];
+  const jobs = await sql<Array<{
+    id: string; job_type: string; status: string; stage_slug: string | null; stage_name: string | null;
+    attempts: number; max_attempts: number; error_message: string | null; created_at: string;
+    started_at: string | null; completed_at: string | null;
+  }>>`
+    select id, job_type, status, payload ->> 'stageSlug' as stage_slug,
+      payload ->> 'stageName' as stage_name, attempts, max_attempts, error_message,
+      created_at::text, started_at::text, completed_at::text
+    from operator_jobs
+    order by created_at desc
+    limit 12
+  `;
 
   return {
     competitionId: competition.id,
@@ -143,6 +170,19 @@ export async function getOperatorWorldsViewWithDatabase(sql: Sql): Promise<Opera
       eligiblePlayers: stage.eligible_players,
       eligibleTeams: stage.eligible_teams,
       assignedMatches: stage.assigned_matches,
+    })),
+    jobs: jobs.map((job) => ({
+      id: job.id,
+      jobType: job.job_type,
+      status: job.status,
+      stageSlug: job.stage_slug,
+      stageName: job.stage_name,
+      attempts: job.attempts,
+      maxAttempts: job.max_attempts,
+      errorMessage: job.error_message,
+      createdAt: job.created_at,
+      startedAt: job.started_at,
+      completedAt: job.completed_at,
     })),
   };
 }

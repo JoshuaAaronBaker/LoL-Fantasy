@@ -19,6 +19,7 @@
     "scores:recalculate": "tsx scripts/recalculate-scores.ts",
     "competition:configure": "tsx scripts/configure-competition.ts",
     "operator:grant": "tsx scripts/grant-operator.ts",
+    "jobs:work": "tsx scripts/work-operator-jobs.ts",
     "stage:bootstrap": "tsx scripts/bootstrap-stage.ts",
     "stage:set-lock": "tsx scripts/set-stage-lock.ts",
     "stage:assign-matches": "tsx scripts/assign-stage-matches.ts",

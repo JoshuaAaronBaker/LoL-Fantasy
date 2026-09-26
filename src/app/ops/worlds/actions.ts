@@ -14,6 +14,8 @@ import { selectWorldChampionshipCandidates } from "@/lib/competitions/worlds-can
 import { getDatabase } from "@/lib/db/client";
 import { getServerEnv } from "@/lib/env/server";
 import { requireOperator } from "@/lib/operators/access";
+import { enqueueStageBootstrapJob, stageBootstrapJobPayloadSchema } from "@/lib/operators/jobs";
+import { getOperatorWorldsView } from "@/lib/operators/queries";
 import { CitoEsportsDataProvider } from "@/lib/providers/cito/client";
 
 const candidateIdSchema = z.uuid();
@@ -86,6 +88,38 @@ export async function refreshWorldsTeamsAction() {
     message = teams.length === 1 ? "Refreshed 1 tournament team." : `Refreshed ${teams.length} tournament teams.`;
   } catch {
     finish("Team refresh failed. Existing team records were preserved.", true);
+  }
+  finish(message);
+}
+
+export async function enqueueWorldsStageBootstrapAction(formData: FormData) {
+  const operator = await requireOperator();
+  let message: string;
+  try {
+    const view = await getOperatorWorldsView();
+    if (!view?.tournamentProviderId) throw new Error("No Worlds tournament is connected.");
+    const requestedTeamIds = formData.getAll("teamId").map(String);
+    const knownTeamIds = new Set(view.teams.map((team) => team.providerId));
+    if (requestedTeamIds.some((teamId) => !knownTeamIds.has(teamId))) {
+      throw new Error("The request includes a team outside the connected tournament.");
+    }
+    const lockAt = new Date(String(formData.get("lockAt") ?? ""));
+    if (Number.isNaN(lockAt.valueOf()) || lockAt <= new Date()) {
+      throw new Error("The stage lock must be a future ISO timestamp.");
+    }
+    const payload = stageBootstrapJobPayloadSchema.parse({
+      tournamentId: view.tournamentProviderId,
+      stageSlug: formData.get("stageSlug"),
+      stageName: formData.get("stageName"),
+      lockAt: lockAt.toISOString(),
+      teamProviderIds: [...new Set(requestedTeamIds)],
+    });
+    const job = await enqueueStageBootstrapJob(getDatabase(), operator.userId, payload);
+    message = job.status === "QUEUED"
+      ? `Queued ${payload.stageName} for catalog creation.`
+      : `${payload.stageName} already has a ${job.status.toLowerCase()} job.`;
+  } catch {
+    finish("Stage request was rejected. Check its name, slug, future lock, and selected teams.", true);
   }
   finish(message);
 }

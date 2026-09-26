@@ -159,8 +159,16 @@ npm run operator:grant -- --username <username>
 ```
 
 The console reviews provider candidates before connection, refreshes the tournament team field, shows
-stage readiness, and prepares an explicit `stage:bootstrap` command with the current team IDs. The
-long-running roster and pricing bootstrap stays in the terminal until it can run in a durable worker.
+stage readiness, and queues the next immutable roster window with an explicit surviving-team field.
+Run one durable queued job with:
+
+```bash
+npm run jobs:work
+```
+
+The worker exclusively claims one job, paces Cito requests, builds and validates the catalog, then
+atomically opens the stage. A crashed worker's lease expires after 30 minutes so another worker can
+recover the request. Failed jobs remain visible and can be explicitly requeued from the same form.
 
 ## Verification
 
