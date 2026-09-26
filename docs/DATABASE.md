@@ -39,3 +39,7 @@ assigned match in a terminal provider state.
 The cumulative Worlds leaderboard is a read model over `fantasy_roster_stage_scores`: totals are
 grouped by user across every stage belonging to the competition's tournament. Stage price and player
 snapshots remain the authoritative historical inputs.
+
+Stage podiums use `rank()` within each revealed stage and retain all rosters tied within the first
+three ranks. Their captain and player breakdowns come from the roster and player-score snapshots;
+open-stage selections never enter this read model before database lock time.

@@ -55,11 +55,20 @@ suite("competition hub", () => {
     `;
     const ruleSets = await sql!<Array<{ id: string }>>`select id from fantasy_scoring_rule_sets where is_active`;
     for (const roster of rosters) {
-      const score = roster.user_id === userOne ? (roster.stage_id === stageOne ? 10 : 15) : 20;
+      const score = roster.user_id === userOne ? (roster.stage_id === stageOne ? 20 : 15) : 20;
+      await sql!`
+        insert into fantasy_roster_players (roster_id, player_id, team_id, role, acquisition_price)
+        values (${roster.id}, ${players[0].id}, ${teams[0].id}, 'MID', 10000000)
+      `;
       await sql!`
         insert into fantasy_roster_stage_scores
           (roster_id, stage_id, rule_set_id, base_score, captain_bonus, total_score, games_scored)
         values (${roster.id}, ${roster.stage_id}, ${ruleSets[0].id}, ${score}, 0, ${score}, 1)
+      `;
+      await sql!`
+        insert into fantasy_roster_player_scores
+          (roster_id, player_id, rule_set_id, base_score, multiplier, final_score, games_scored)
+        values (${roster.id}, ${players[0].id}, ${ruleSets[0].id}, ${score}, 1, ${score}, 1)
       `;
     }
   });
@@ -80,8 +89,21 @@ suite("competition hub", () => {
       currentStage: { name: "Round Two", hasCurrentUserRoster: true },
     });
     expect(hub?.standings).toEqual([
-      expect.objectContaining({ rank: 1, username: "worlds_one", totalScore: 25, stagesEntered: 2, isCurrentUser: true }),
+      expect.objectContaining({ rank: 1, username: "worlds_one", totalScore: 35, stagesEntered: 2, isCurrentUser: true }),
       expect.objectContaining({ rank: 2, username: "worlds_two", totalScore: 20, stagesEntered: 1, isCurrentUser: false }),
     ]);
+    expect(hub?.stagePodiums).toHaveLength(2);
+    expect(hub?.stagePodiums[0]).toMatchObject({
+      stageName: "Round One",
+      status: "COMPLETE",
+      leaders: [
+        { rank: 1, totalScore: 20, lineup: [{ name: "Worlds Player", isCaptain: true, finalScore: 20 }] },
+        { rank: 1, totalScore: 20, lineup: [{ name: "Worlds Player", isCaptain: true, finalScore: 20 }] },
+      ],
+    });
+    expect(hub?.stagePodiums[1]).toMatchObject({
+      stageName: "Round Two",
+      leaders: [{ rank: 1, username: "worlds_one", totalScore: 15 }],
+    });
   });
 });

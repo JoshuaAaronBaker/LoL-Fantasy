@@ -148,6 +148,8 @@ npm run competition:configure -- \
 
 Then bootstrap one immutable stage per roster window with `--teams`. Stage scores automatically roll
 up into the single cumulative leaderboard at `/worlds`; no private leagues or invite codes are used.
+Once a stage locks, the Worlds hub also shows its tie-aware leading rosters, winning captain and
+lineup, live/final scoring state, and a link to the full stage leaderboard.
 
 ## Verification
 

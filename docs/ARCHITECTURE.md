@@ -40,6 +40,10 @@ stage, while the Worlds read model sums their stage-score snapshots into one glo
 The seeded Worlds shell may exist without a provider tournament, which keeps the UI honest while a
 future tournament feed is not yet available.
 
+The competition read model also derives stage podiums directly from the same materialized score
+snapshots. It returns every roster in the top three competitive ranks so boundary ties are preserved,
+and it loads lineup details only for stages whose status or database lock time permits public reveal.
+
 ## Deployment direction
 
 The Next.js application is Vercel-compatible. For hosted Supabase, `DATABASE_URL` should be a server-only Supavisor transaction-pooler URL; the PostgreSQL client disables prepared statements for pooler compatibility. Hosted Auth must keep email confirmation disabled because usernames map to internal synthetic addresses. The stage-sync command is ready to run from a hosted scheduler; deployment wiring, monitoring, and Realtime are later milestones. The product intentionally uses one global stage leaderboard rather than private leagues.

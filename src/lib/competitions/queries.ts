@@ -1,4 +1,5 @@
 import type { Sql } from "postgres";
+import type { ProRole } from "@/lib/domain/types";
 
 export interface CompetitionStageView {
   id: string;
@@ -32,6 +33,36 @@ export interface CompetitionTeamView {
   imageUrl: string | null;
 }
 
+export interface CompetitionStageLeaderPlayerView {
+  id: string;
+  name: string;
+  role: ProRole;
+  teamAbbreviation: string | null;
+  isCaptain: boolean;
+  finalScore: number;
+}
+
+export interface CompetitionStageLeaderView {
+  rank: number;
+  placement: number;
+  rosterId: string;
+  username: string;
+  totalScore: number;
+  captainBonus: number;
+  gamesScored: number;
+  isCurrentUser: boolean;
+  lineup: CompetitionStageLeaderPlayerView[];
+}
+
+export interface CompetitionStagePodiumView {
+  stageId: string;
+  stageSlug: string;
+  stageName: string;
+  sequence: number;
+  status: string;
+  leaders: CompetitionStageLeaderView[];
+}
+
 export interface CompetitionHubView {
   id: string;
   slug: string;
@@ -46,6 +77,7 @@ export interface CompetitionHubView {
   currentStage: CompetitionStageView | null;
   stages: CompetitionStageView[];
   remainingTeams: CompetitionTeamView[];
+  stagePodiums: CompetitionStagePodiumView[];
   standings: CompetitionStandingView[];
 }
 
@@ -132,6 +164,11 @@ export async function getCompetitionHubWithDatabase(
     hasCurrentUserRoster: stage.has_current_user_roster,
   }));
   const currentStage = selectCurrentStage(stages, competition.database_now);
+  const databaseNow = new Date(competition.database_now).valueOf();
+  const revealedStages = stages.filter((stage) =>
+    ["LOCKED", "LIVE", "COMPLETE"].includes(stage.status)
+      || (stage.lockAt !== null && databaseNow >= new Date(stage.lockAt).valueOf()),
+  );
 
   const teams = currentStage
     ? await sql<Array<{ id: string; name: string; abbreviation: string | null; image_url: string | null }>>`
@@ -168,6 +205,84 @@ export async function getCompetitionHubWithDatabase(
         order by rank, username
       `
     : [];
+  const leaderRows = revealedStages.length > 0
+    ? await sql<Array<{
+        stage_id: string; rank: string; placement: string; roster_id: string; user_id: string;
+        username: string; total_score: string; captain_bonus: string; games_scored: number;
+      }>>`
+        with ranked as (
+          select r.stage_id, r.id as roster_id, r.user_id, p.username,
+            coalesce(score.total_score, 0) as total_score,
+            coalesce(score.captain_bonus, 0) as captain_bonus,
+            coalesce(score.games_scored, 0)::int as games_scored,
+            rank() over (
+              partition by r.stage_id order by coalesce(score.total_score, 0) desc
+            ) as rank,
+            row_number() over (
+              partition by r.stage_id
+              order by coalesce(score.total_score, 0) desc, r.submitted_at, p.username
+            ) as placement
+          from fantasy_rosters r
+          join profiles p on p.id = r.user_id
+          left join fantasy_roster_stage_scores score on score.roster_id = r.id
+          where r.stage_id in ${sql(revealedStages.map((stage) => stage.id))}
+        )
+        select stage_id, rank::text, placement::text, roster_id, user_id, username,
+          total_score::text, captain_bonus::text, games_scored
+        from ranked where rank <= 3
+        order by stage_id, placement
+      `
+    : [];
+  const leaderRosterIds = leaderRows.map((row) => row.roster_id);
+  const leaderPlayers = leaderRosterIds.length > 0
+    ? await sql<Array<{
+        roster_id: string; id: string; name: string; role: ProRole;
+        team_abbreviation: string | null; is_captain: boolean; final_score: string;
+      }>>`
+        select rp.roster_id, player.id, player.display_name as name, rp.role,
+          team.abbreviation as team_abbreviation,
+          (r.captain_player_id = rp.player_id) as is_captain,
+          coalesce(score.final_score, 0)::text as final_score
+        from fantasy_roster_players rp
+        join fantasy_rosters r on r.id = rp.roster_id
+        join pro_players player on player.id = rp.player_id
+        join pro_teams team on team.id = rp.team_id
+        left join fantasy_roster_player_scores score
+          on score.roster_id = rp.roster_id and score.player_id = rp.player_id
+        where rp.roster_id in ${sql(leaderRosterIds)}
+        order by rp.roster_id,
+          case rp.role when 'TOP' then 1 when 'JUNGLE' then 2 when 'MID' then 3 when 'BOT' then 4 else 5 end
+      `
+    : [];
+  const leaderPlayersByRoster = new Map<string, CompetitionStageLeaderPlayerView[]>();
+  for (const player of leaderPlayers) {
+    const lineup = leaderPlayersByRoster.get(player.roster_id) ?? [];
+    lineup.push({
+      id: player.id,
+      name: player.name,
+      role: player.role,
+      teamAbbreviation: player.team_abbreviation,
+      isCaptain: player.is_captain,
+      finalScore: Number(player.final_score),
+    });
+    leaderPlayersByRoster.set(player.roster_id, lineup);
+  }
+  const leadersByStage = new Map<string, CompetitionStageLeaderView[]>();
+  for (const entry of leaderRows) {
+    const leaders = leadersByStage.get(entry.stage_id) ?? [];
+    leaders.push({
+      rank: Number(entry.rank),
+      placement: Number(entry.placement),
+      rosterId: entry.roster_id,
+      username: entry.username,
+      totalScore: Number(entry.total_score),
+      captainBonus: Number(entry.captain_bonus),
+      gamesScored: entry.games_scored,
+      isCurrentUser: entry.user_id === userId,
+      lineup: leaderPlayersByRoster.get(entry.roster_id) ?? [],
+    });
+    leadersByStage.set(entry.stage_id, leaders);
+  }
 
   return {
     id: competition.id,
@@ -187,6 +302,14 @@ export async function getCompetitionHubWithDatabase(
       name: team.name,
       abbreviation: team.abbreviation,
       imageUrl: team.image_url,
+    })),
+    stagePodiums: revealedStages.map((stage) => ({
+      stageId: stage.id,
+      stageSlug: stage.slug,
+      stageName: stage.name,
+      sequence: stage.sequence,
+      status: stage.status,
+      leaders: leadersByStage.get(stage.id) ?? [],
     })),
     standings: standings.map((entry) => ({
       rank: Number(entry.rank),
