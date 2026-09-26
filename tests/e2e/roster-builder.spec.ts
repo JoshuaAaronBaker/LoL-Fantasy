@@ -27,6 +27,10 @@ test("registers, restores a draft, submits a lineup, and logs back in", async ({
   await page.getByTitle("Make captain").first().click();
   await page.getByRole("button", { name: /Submit lineup/i }).click();
   await expect(page.getByText(/Lineup saved/)).toBeVisible();
+  await page.getByRole("link", { name: "Leaderboard" }).click();
+  await expect(page).toHaveURL(/\/play\/lcs-dev-playoffs\/leaderboard$/);
+  await expect(page.locator("summary").getByText(username)).toBeVisible();
+  await expect(page.getByText("Opponent lineups are hidden until lock.")).toBeVisible();
 
   await page.getByLabel("Log out").click();
   await expect(page).toHaveURL("/");

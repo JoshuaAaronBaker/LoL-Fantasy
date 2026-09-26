@@ -55,7 +55,7 @@ npm run scores:recalculate -- --ruleset default-v1
 npm run scores:recalculate -- --ruleset default-v1 --game <game-id>
 ```
 
-The seeded rules are kills `+3`, assists `+1.5`, deaths `-1`, CS `+0.01`, and win `+2`. Roster aggregation and the `1.5×` captain multiplier are the next milestone.
+The seeded rules are kills `+3`, assists `+1.5`, deaths `-1`, CS `+0.01`, and win `+2`. Stage totals apply the configured `1.5×` captain multiplier and are materialized idempotently for the global leaderboard.
 
 ## Build a fantasy stage
 
@@ -73,6 +73,20 @@ Repeating the command for an open stage is a no-op. Change a development lock wi
 
 ```bash
 npm run stage:set-lock -- --stage lcs-dev-playoffs --lock-at <future-ISO-timestamp>
+```
+
+Explicitly attach ingested matches to the stage before they count toward fantasy totals:
+
+```bash
+npm run stage:assign-matches -- \
+  --stage lcs-dev-playoffs \
+  --matches <match-id>,<another-match-id>
+```
+
+Ingestion and player-score recalculation automatically refresh affected leaderboards. An operator can also replay the materialization directly:
+
+```bash
+npm run leaderboard:recalculate -- --stage lcs-dev-playoffs
 ```
 
 ## Verification

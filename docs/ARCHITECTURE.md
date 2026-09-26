@@ -6,6 +6,7 @@
 - `src/lib/ingestion` orchestrates completed-game loading and transactional persistence.
 - `src/lib/stages` builds immutable stage catalogs and price snapshots.
 - `src/lib/rosters` exposes safe stage and saved-roster read models.
+- `src/lib/leaderboard` materializes roster totals and exposes lock-aware standings read models.
 - `src/lib/supabase` owns cookie-backed authentication clients and session refresh.
 - `src/lib/domain` contains pure fantasy rules with no React, network, or database dependency.
 - `src/lib/db` contains server-only connections and read models.
@@ -23,6 +24,8 @@ Stage bootstrap is a separate operator flow. It paces Cito calls, snapshots acti
 
 Browser drafts are convenience state only. A roster submission contains IDs, then a protected server action reloads stage rules and catalog facts, locks the stage row, validates against database time, and transactionally replaces the user's roster.
 
+Fantasy stages only score explicitly assigned matches through `matches.stage_id`. Each ingestion, player-score replay, roster submission, or operator replay converges `fantasy_roster_player_scores` and `fantasy_roster_stage_scores` on the same totals. Leaderboards expose usernames and totals while the stage is open, but return opponent lineup breakdowns only after database lock time.
+
 ## Deployment direction
 
-The Next.js application is Vercel-compatible. For hosted Supabase, `DATABASE_URL` should be a server-only Supavisor transaction-pooler URL; the PostgreSQL client disables prepared statements for pooler compatibility. Hosted Auth must keep email confirmation disabled because usernames map to internal synthetic addresses. Scheduled ingestion, roster scoring, private leagues, and Realtime are later milestones.
+The Next.js application is Vercel-compatible. For hosted Supabase, `DATABASE_URL` should be a server-only Supavisor transaction-pooler URL; the PostgreSQL client disables prepared statements for pooler compatibility. Hosted Auth must keep email confirmation disabled because usernames map to internal synthetic addresses. Scheduled ingestion, private leagues, and Realtime are later milestones.

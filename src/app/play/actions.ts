@@ -6,6 +6,7 @@ import { getDatabase } from "@/lib/db/client";
 import { isRosterStageOpen, validateRoster } from "@/lib/domain/roster";
 import type { ProRole } from "@/lib/domain/types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { recalculateRosterScores } from "@/lib/leaderboard/repository";
 
 const rosterPayloadSchema = z.object({
   stageId: z.string().uuid(),
@@ -80,6 +81,7 @@ export async function saveRosterAction(input: unknown): Promise<SaveRosterResult
           values (${rosters[0].id}, ${row.id}, ${row.team_id}, ${row.role}, ${row.price})
         `;
       }
+      await recalculateRosterScores(tx, stage.id);
       return {
         ok: true as const,
         saved: { totalSalary: validation.totalSalary, submittedAt: rosters[0].submitted_at },

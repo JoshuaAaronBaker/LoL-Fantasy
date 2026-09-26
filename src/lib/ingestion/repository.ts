@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { Sql, TransactionSql } from "postgres";
 import type { IngestionBundle, NormalizedTeam, ProRole, SourceKind } from "@/lib/domain/types";
 import { calculateFantasyScore, type ScoringMetric, type ScoringRule } from "@/lib/domain/scoring";
+import { recalculateRosterScores } from "@/lib/leaderboard/repository";
 
 type Db = Sql | TransactionSql<Record<string, never>>;
 
@@ -119,7 +120,7 @@ export async function persistIngestionBundle(
       const teamIds = new Map<string, string>();
       for (const team of allTeams.values()) teamIds.set(team.providerId, await upsertTeam(tx, team));
 
-      const matchRows = await tx<Array<{ id: string }>>`
+      const matchRows = await tx<Array<{ id: string; stage_id: string | null }>>`
         insert into matches (
           provider, provider_id, tournament_id, provider_stage_label, start_time, status, raw_payload
         ) values (
@@ -132,7 +133,7 @@ export async function persistIngestionBundle(
           start_time = excluded.start_time,
           status = excluded.status,
           raw_payload = excluded.raw_payload
-        returning id
+        returning id, stage_id
       `;
       const matchId = matchRows[0].id;
       let statsProcessed = 0;
@@ -237,6 +238,8 @@ export async function persistIngestionBundle(
         }
       }
 
+      if (matchRows[0].stage_id) await recalculateRosterScores(tx, matchRows[0].stage_id);
+
       return {
         status: unchangedGames === bundle.games.length ? ("UNCHANGED" as const) : ("SUCCEEDED" as const),
         statsProcessed,
@@ -299,6 +302,14 @@ export async function recalculateScores(sql: Sql, ruleSetKey: string, providerGa
           calculated_at = now()
       `;
     }
-    return { count: stats.length, ruleSet: ruleSet.name };
+    const stages = await tx<Array<{ id: string }>>`
+      select distinct m.stage_id as id
+      from matches m
+      join games g on g.match_id = m.id
+      where m.stage_id is not null
+        and ${providerGameId ? tx`g.provider_id = ${providerGameId}` : tx`true`}
+    `;
+    for (const stage of stages) await recalculateRosterScores(tx, stage.id);
+    return { count: stats.length, ruleSet: ruleSet.name, leaderboardsUpdated: stages.length };
   });
 }

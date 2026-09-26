@@ -23,6 +23,8 @@ base score            = 43.37
 captain × 1.5         = 65.06
 ```
 
-Base player-game scores are materialized. Captain points belong to a future roster aggregation because captain status is a user's roster choice, not a property of the professional player's game.
+Base player-game scores remain immutable inputs. For each fantasy stage, assigned matches are summed per selected player, the captain's aggregate receives the ruleset multiplier, and the roster total is materialized as base score plus captain bonus. Replaying ingestion or recalculation replaces the same materialized rows rather than incrementing them.
+
+Opponent selections and player-level score breakdowns remain hidden until the stage's database lock time. Usernames, ranks, and roster totals are visible to authenticated competitors on the global leaderboard.
 
 First-blood and multikill bonuses remain disabled until a real Cito payload confirms reliable source fields. Add a new immutable ruleset version rather than editing rules used by completed competitions.

@@ -79,5 +79,18 @@ suite("roster RLS", () => {
       expect(tournaments[0].count).toBe(1);
     });
   });
-});
 
+  it("reveals opponents but rejects owner mutations after lock", async () => {
+    await sql!`update tournament_stages set status = 'LOCKED' where slug = 'rls-stage'`;
+    await sql!.begin(async (tx) => {
+      await tx`select set_config('request.jwt.claim.sub', ${userA}, true)`;
+      await tx`set local role authenticated`;
+      const rosters = await tx<Array<{ user_id: string }>>`select user_id from fantasy_rosters order by user_id`;
+      const updated = await tx<Array<{ id: string }>>`
+        update fantasy_rosters set total_salary = total_salary + 1 where user_id = ${userA} returning id
+      `;
+      expect(rosters).toEqual([{ user_id: userA }, { user_id: userB }]);
+      expect(updated).toEqual([]);
+    });
+  });
+});

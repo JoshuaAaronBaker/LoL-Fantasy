@@ -25,5 +25,7 @@ Every provider entity has a uniqueness constraint on `(provider, provider_id)`. 
 - `player_stage_prices` snapshots projected FP/G, role percentile, algorithm version, price, and source stats.
 - `fantasy_rosters` is unique per user and stage and stores the captain, submitted salary, and submission time.
 - `fantasy_roster_players` stores the five role-unique selections with acquisition-price and team snapshots.
+- `fantasy_roster_player_scores` materializes each selected player's stage base score, multiplier, final score, and games counted.
+- `fantasy_roster_stage_scores` materializes base total, captain bonus, final total, and distinct games for leaderboard ranking.
 
-RLS is enabled on every table. Authenticated users can read the fantasy catalog, read/update their own profile, and access only their own roster rows. The application still verifies identity in every server mutation and performs authoritative writes in a database transaction.
+RLS is enabled on every table. Authenticated users can read the fantasy catalog and leaderboard totals. They can mutate only their own roster before lock, inspect only their own player breakdown before lock, and see opponent lineups after lock. The application also verifies identity in every server mutation and performs authoritative writes in a database transaction.

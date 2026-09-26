@@ -35,6 +35,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
               <nav className="flex items-center gap-2">
                 {user ? <>
                   <Link href="/play/lcs-dev-playoffs" className="hidden rounded-lg px-3 py-2 text-xs font-black uppercase tracking-wider text-zinc-400 transition hover:bg-white/5 hover:text-white sm:block">Build lineup</Link>
+                  <Link href="/play/lcs-dev-playoffs/leaderboard" className="hidden rounded-lg px-3 py-2 text-xs font-black uppercase tracking-wider text-zinc-400 transition hover:bg-white/5 hover:text-white md:block">Standings</Link>
                   <span className="hidden items-center gap-2 text-xs font-bold text-zinc-500 sm:flex"><UserRound className="size-3.5" />{String(user.user_metadata?.username ?? "Player")}</span>
                   <form action={logoutAction}><button type="submit" aria-label="Log out" className="grid size-9 place-items-center rounded-lg border border-white/8 text-zinc-500 transition hover:text-rose-300"><LogOut className="size-4" /></button></form>
                 </> : <>
