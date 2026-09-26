@@ -20,6 +20,7 @@
     "competition:configure": "tsx scripts/configure-competition.ts",
     "operator:grant": "tsx scripts/grant-operator.ts",
     "jobs:work": "tsx scripts/work-operator-jobs.ts",
+    "jobs:schedule": "tsx scripts/schedule-operator-jobs.ts",
     "stage:bootstrap": "tsx scripts/bootstrap-stage.ts",
     "stage:set-lock": "tsx scripts/set-stage-lock.ts",
     "stage:assign-matches": "tsx scripts/assign-stage-matches.ts",

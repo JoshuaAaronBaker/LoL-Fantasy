@@ -19,9 +19,11 @@ import { requireOperator } from "@/lib/operators/access";
 import { getOperatorWorldsView } from "@/lib/operators/queries";
 import {
   connectWorldsTournamentAction,
+  configureWorldsStageSyncAction,
   discoverWorldsTournamentsAction,
   enqueueWorldsStageBootstrapAction,
   refreshWorldsTeamsAction,
+  toggleWorldsStageSyncAction,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -114,6 +116,16 @@ export default async function WorldsOperationsPage({ searchParams }: {
         <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Stage readiness</p><h2 className="mt-2 text-2xl font-black text-white">Roster windows</h2></div>
         {view.stages.length === 0 ? <div className="mt-4 rounded-2xl border border-dashed border-white/10 px-6 py-10 text-center"><CircleDot className="mx-auto size-7 text-zinc-700" /><p className="mt-3 text-sm font-bold text-zinc-400">No Worlds stage catalog exists yet</p></div> : <div className="mt-4 grid gap-3 lg:grid-cols-2">{view.stages.map((stage) => <Card key={stage.id} className="p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">Stage {String(stage.sequence).padStart(2, "0")}</p><h3 className="mt-1 font-black text-white">{stage.name}</h3></div><Badge>{stage.status}</Badge></div><div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/8 pt-4 text-center"><div><p className="font-mono text-lg font-black text-white">{stage.eligibleTeams}</p><p className="text-[9px] uppercase text-zinc-600">Teams</p></div><div><p className="font-mono text-lg font-black text-white">{stage.eligiblePlayers}</p><p className="text-[9px] uppercase text-zinc-600">Players</p></div><div><p className="font-mono text-lg font-black text-white">{stage.assignedMatches}</p><p className="text-[9px] uppercase text-zinc-600">Matches</p></div></div></Card>)}</div>}
       </section>
+
+      {view.stages.some((stage) => ["OPEN", "LOCKED", "LIVE"].includes(stage.status)) && (
+        <section className="mt-10">
+          <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-300">Automated scoring</p><h2 className="mt-2 text-2xl font-black text-white">Live-stage synchronization</h2><p className="mt-2 text-sm text-zinc-500">Save the complete provider match manifest once. The scheduler turns each due interval into a recoverable sync job.</p></div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">{view.stages.filter((stage) => ["OPEN", "LOCKED", "LIVE"].includes(stage.status)).map((stage) => {
+            const schedule = view.schedules.find((entry) => entry.stageId === stage.id);
+            return <Card key={stage.id} className="p-5"><div className="flex items-start justify-between gap-3"><div><h3 className="font-black text-white">{stage.name}</h3><p className="mt-1 text-xs text-zinc-600">{schedule ? `${schedule.matchProviderIds.length} matches · every ${schedule.intervalMinutes} min` : "Not scheduled"}</p></div>{schedule && <Badge className={schedule.enabled ? "border-lime-300/20 bg-lime-300/8 text-lime-300" : "text-zinc-500"}>{schedule.enabled ? "Enabled" : "Paused"}</Badge>}</div><form action={configureWorldsStageSyncAction} className="mt-5 space-y-3"><input type="hidden" name="stageId" value={stage.id} /><label className="block text-[9px] font-black uppercase tracking-wider text-zinc-600">Complete match manifest<textarea required name="matchIds" defaultValue={schedule?.matchProviderIds.join("\n") ?? ""} placeholder="One provider match ID per line" rows={4} className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-xs font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40" /></label><div className="flex flex-col gap-3 sm:flex-row sm:items-end"><label className="flex-1 text-[9px] font-black uppercase tracking-wider text-zinc-600">Interval minutes<input required type="number" name="intervalMinutes" min={5} max={1440} defaultValue={schedule?.intervalMinutes ?? 15} className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-sm font-normal text-white outline-none focus:border-cyan-300/40" /></label><button className="inline-flex items-center justify-center gap-2 rounded-xl bg-lime-300 px-4 py-3 text-xs font-black uppercase tracking-wider text-zinc-950 hover:bg-lime-200"><RefreshCw className="size-3.5" />Save schedule</button></div></form>{schedule && <div className="mt-4 flex items-center justify-between border-t border-white/8 pt-4"><p className="text-[10px] text-zinc-600">Next due {formatDate(schedule.nextRunAt)}</p><form action={toggleWorldsStageSyncAction}><input type="hidden" name="stageId" value={stage.id} /><input type="hidden" name="enabled" value={schedule.enabled ? "false" : "true"} /><button className="text-xs font-black text-zinc-400 hover:text-white">{schedule.enabled ? "Pause" : "Resume"}</button></form></div>}</Card>;
+          })}</div>
+        </section>
+      )}
 
       <section className="mt-10">
         <Card className="overflow-hidden p-0">

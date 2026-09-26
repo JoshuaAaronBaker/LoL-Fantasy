@@ -56,6 +56,12 @@ payload. A separate worker exclusively claims work with `FOR UPDATE SKIP LOCKED`
 time-bounded lease, and calls the same reusable bootstrap service as the terminal command. Provider
 credentials remain worker environment state and never enter the queue.
 
+Recurring live scoring is represented by `stage_sync_schedules`, not an in-process timer. A small
+scheduler command locks due rows, prevents overlap with queued or running syncs, and emits durable
+`STAGE_SYNC` jobs containing the stage slug and its operator-confirmed complete match manifest. The
+worker reuses `synchronizeStage`, so scheduled and terminal operations converge on the same ingestion,
+lifecycle, scoring, and audit records. Completed stages automatically disable their schedules.
+
 ## Deployment direction
 
 The Next.js application is Vercel-compatible. For hosted Supabase, `DATABASE_URL` should be a server-only Supavisor transaction-pooler URL; the PostgreSQL client disables prepared statements for pooler compatibility. Hosted Auth must keep email confirmation disabled because usernames map to internal synthetic addresses. The stage-sync command is ready to run from a hosted scheduler; deployment wiring, monitoring, and Realtime are later milestones. The product intentionally uses one global stage leaderboard rather than private leagues.

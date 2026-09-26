@@ -4,8 +4,10 @@ import { hostname } from "node:os";
 import { createDatabase } from "../src/lib/db/connect";
 import { getServerEnv } from "../src/lib/env/server";
 import { claimOperatorJob, completeOperatorJob, failOperatorJob } from "../src/lib/operators/jobs";
+import { finishStageSyncSchedule } from "../src/lib/operators/schedules";
 import { CitoEsportsDataProvider } from "../src/lib/providers/cito/client";
 import { runStageBootstrap } from "../src/lib/stages/bootstrap-runner";
+import { synchronizeStage } from "../src/lib/stages/sync";
 
 async function main() {
   const env = getServerEnv();
@@ -20,18 +22,30 @@ async function main() {
     }
     console.info(JSON.stringify({ workerId, jobId: job.id, jobType: job.jobType, attempt: job.attempts }, null, 2));
     try {
-      const result = await runStageBootstrap(
-        sql,
-        new CitoEsportsDataProvider({ apiKey: env.CITO_API_KEY, minRequestIntervalMs: 6_100 }),
-        {
-          tournamentId: job.payload.tournamentId,
-          slug: job.payload.stageSlug,
-          name: job.payload.stageName,
-          lockAt: job.payload.lockAt,
-          eligibleTeamIds: job.payload.teamProviderIds,
-        },
-        (message) => console.info(`[${job.id}] ${message}`),
-      );
+      const provider = new CitoEsportsDataProvider({ apiKey: env.CITO_API_KEY, minRequestIntervalMs: 6_100 });
+      let result: unknown;
+      if (job.jobType === "STAGE_BOOTSTRAP") {
+        result = await runStageBootstrap(
+            sql,
+            provider,
+            {
+              tournamentId: job.payload.tournamentId,
+              slug: job.payload.stageSlug,
+              name: job.payload.stageName,
+              lockAt: job.payload.lockAt,
+              eligibleTeamIds: job.payload.teamProviderIds,
+            },
+            (message) => console.info(`[${job.id}] ${message}`),
+          );
+      } else {
+        const syncResult = await synchronizeStage(sql, provider, {
+          stageSlug: job.payload.stageSlug,
+          matchIds: job.payload.matchProviderIds,
+          refreshCompleted: job.payload.refreshCompleted,
+        });
+        result = syncResult;
+        await finishStageSyncSchedule(sql, job.payload.scheduleId, syncResult.stageStatus);
+      }
       await completeOperatorJob(sql, job.id, workerId, result);
       console.info(JSON.stringify({ jobId: job.id, status: "SUCCEEDED", result }, null, 2));
     } catch (error) {

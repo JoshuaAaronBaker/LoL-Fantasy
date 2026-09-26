@@ -18,6 +18,7 @@ Every provider entity has a uniqueness constraint on `(provider, provider_id)`. 
 - `ingestion_runs` records status and row counts without storing credentials.
 - `stage_sync_runs` audits each stage-wide provider sync, lifecycle result, and processed row count. It is operator-only and has no client grants.
 - `operator_jobs` durably queues long-running stage bootstrap requests with idempotency keys, exclusive worker leases, attempt counts, results, and bounded errors. Payloads never contain provider credentials.
+- `stage_sync_schedules` stores one operator-approved match manifest and polling cadence per stage. Due rows enqueue `STAGE_SYNC` jobs only when no sync for that schedule is already queued or running.
 
 ## Authentication and roster building
 

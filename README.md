@@ -170,6 +170,18 @@ The worker exclusively claims one job, paces Cito requests, builds and validates
 atomically opens the stage. A crashed worker's lease expires after 30 minutes so another worker can
 recover the request. Failed jobs remain visible and can be explicitly requeued from the same form.
 
+After a stage opens, configure its complete provider match manifest and polling interval in
+`/ops/worlds`. Run the lightweight scheduler before the worker:
+
+```bash
+npm run jobs:schedule
+npm run jobs:work
+```
+
+The scheduler enqueues at most one active sync per stage, skips missed-interval backlogs, and disables
+the schedule automatically after the stage reaches `COMPLETE`. The worker uses the same idempotent
+ingestion, lifecycle, scoring, and leaderboard pipeline as `npm run stage:sync`.
+
 ## Verification
 
 ```bash

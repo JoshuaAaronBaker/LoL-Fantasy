@@ -43,9 +43,9 @@ suite("operator job queue", () => {
     const replay = await enqueueStageBootstrapJob(sql!, userId, payload);
     expect(replay.id).toBe(first.id);
 
-    const claimed = await claimOperatorJob(sql!, "worker-one", 60);
+    const claimed = await claimOperatorJob(sql!, "worker-one", 60, ["STAGE_BOOTSTRAP"]);
     expect(claimed).toMatchObject({ id: first.id, status: "RUNNING", attempts: 1, workerId: "worker-one" });
-    await expect(claimOperatorJob(sql!, "worker-two", 60)).resolves.toBeNull();
+    await expect(claimOperatorJob(sql!, "worker-two", 60, ["STAGE_BOOTSTRAP"])).resolves.toBeNull();
     await expect(completeOperatorJob(sql!, first.id, "worker-two", {})).rejects.toThrow(/no longer owns/i);
     await completeOperatorJob(sql!, first.id, "worker-one", { stageId: "stage-one" });
     const rows = await sql!<Array<{ status: string; result: { stageId: string } }>>`
@@ -71,7 +71,7 @@ suite("operator job queue", () => {
       teamProviderIds: ["team-a"],
     };
     const queued = await enqueueStageBootstrapJob(sql!, userId, payload);
-    const claimed = await claimOperatorJob(sql!, "retry-worker", 60);
+    const claimed = await claimOperatorJob(sql!, "retry-worker", 60, ["STAGE_BOOTSTRAP"]);
     expect(claimed?.id).toBe(queued.id);
     await failOperatorJob(sql!, queued.id, "retry-worker", new Error("temporary provider failure"));
     const retried = await enqueueStageBootstrapJob(sql!, userId, payload);

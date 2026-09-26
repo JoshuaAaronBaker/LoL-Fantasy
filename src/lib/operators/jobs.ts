@@ -11,32 +11,49 @@ export const stageBootstrapJobPayloadSchema = z.object({
 
 export type StageBootstrapJobPayload = z.infer<typeof stageBootstrapJobPayloadSchema>;
 
-export interface OperatorJobRecord {
+export const stageSyncJobPayloadSchema = z.object({
+  scheduleId: z.uuid(),
+  stageId: z.uuid(),
+  stageSlug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  stageName: z.string().trim().min(3).max(80),
+  matchProviderIds: z.array(z.string().min(1)).min(1),
+  refreshCompleted: z.boolean(),
+});
+
+export type StageSyncJobPayload = z.infer<typeof stageSyncJobPayloadSchema>;
+export type OperatorJobType = "STAGE_BOOTSTRAP" | "STAGE_SYNC";
+export type OperatorJobPayload = StageBootstrapJobPayload | StageSyncJobPayload;
+
+interface OperatorJobBase {
   id: string;
-  jobType: "STAGE_BOOTSTRAP";
   status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED";
-  payload: StageBootstrapJobPayload;
   attempts: number;
   maxAttempts: number;
   workerId: string | null;
   leaseExpiresAt: string | null;
 }
 
+export type OperatorJobRecord = OperatorJobBase & (
+  | { jobType: "STAGE_BOOTSTRAP"; payload: StageBootstrapJobPayload }
+  | { jobType: "STAGE_SYNC"; payload: StageSyncJobPayload }
+);
+
 function mapJob(row: {
-  id: string; job_type: "STAGE_BOOTSTRAP"; status: OperatorJobRecord["status"];
+  id: string; job_type: OperatorJobType; status: OperatorJobRecord["status"];
   payload: unknown; attempts: number; max_attempts: number; worker_id: string | null;
   lease_expires_at: string | null;
 }): OperatorJobRecord {
-  return {
+  const base = {
     id: row.id,
-    jobType: row.job_type,
     status: row.status,
-    payload: stageBootstrapJobPayloadSchema.parse(row.payload),
     attempts: row.attempts,
     maxAttempts: row.max_attempts,
     workerId: row.worker_id,
     leaseExpiresAt: row.lease_expires_at,
   };
+  return row.job_type === "STAGE_BOOTSTRAP"
+    ? { ...base, jobType: row.job_type, payload: stageBootstrapJobPayloadSchema.parse(row.payload) }
+    : { ...base, jobType: row.job_type, payload: stageSyncJobPayloadSchema.parse(row.payload) };
 }
 
 export async function enqueueStageBootstrapJob(
@@ -47,7 +64,7 @@ export async function enqueueStageBootstrapJob(
   const payload = stageBootstrapJobPayloadSchema.parse(payloadInput);
   const idempotencyKey = `stage-bootstrap:${payload.tournamentId}:${payload.stageSlug}`;
   const rows = await sql<Array<{
-    id: string; job_type: "STAGE_BOOTSTRAP"; status: OperatorJobRecord["status"];
+    id: string; job_type: OperatorJobType; status: OperatorJobRecord["status"];
     payload: unknown; attempts: number; max_attempts: number; worker_id: string | null;
     lease_expires_at: string | null;
   }>>`
@@ -68,20 +85,27 @@ export async function enqueueStageBootstrapJob(
   return mapJob(rows[0]);
 }
 
-export async function claimOperatorJob(sql: Sql, workerId: string, leaseSeconds = 1_800) {
+export async function claimOperatorJob(
+  sql: Sql,
+  workerId: string,
+  leaseSeconds = 1_800,
+  jobTypes: OperatorJobType[] = ["STAGE_BOOTSTRAP", "STAGE_SYNC"],
+) {
+  if (jobTypes.length === 0) throw new Error("At least one operator job type is required.");
   await sql`
     update operator_jobs set status = 'FAILED', completed_at = clock_timestamp(), lease_expires_at = null,
       error_message = coalesce(error_message, 'Worker lease expired after the maximum number of attempts.')
     where status = 'RUNNING' and lease_expires_at < clock_timestamp() and attempts >= max_attempts
   `;
   const rows = await sql<Array<{
-    id: string; job_type: "STAGE_BOOTSTRAP"; status: OperatorJobRecord["status"];
+    id: string; job_type: OperatorJobType; status: OperatorJobRecord["status"];
     payload: unknown; attempts: number; max_attempts: number; worker_id: string | null;
     lease_expires_at: string | null;
   }>>`
     with candidate as (
       select id from operator_jobs
       where attempts < max_attempts
+        and job_type in ${sql(jobTypes)}
         and (status = 'QUEUED' or (status = 'RUNNING' and lease_expires_at < clock_timestamp()))
       order by created_at
       for update skip locked

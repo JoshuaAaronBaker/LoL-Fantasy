@@ -48,6 +48,17 @@ export interface OperatorJobView {
   completedAt: string | null;
 }
 
+export interface OperatorStageSyncScheduleView {
+  id: string;
+  stageId: string;
+  enabled: boolean;
+  intervalMinutes: number;
+  matchProviderIds: string[];
+  refreshCompleted: boolean;
+  nextRunAt: string;
+  lastEnqueuedAt: string | null;
+}
+
 export interface OperatorWorldsView {
   competitionId: string;
   competitionName: string;
@@ -60,6 +71,7 @@ export interface OperatorWorldsView {
   teams: OperatorTournamentTeam[];
   stages: OperatorStageReadiness[];
   jobs: OperatorJobView[];
+  schedules: OperatorStageSyncScheduleView[];
 }
 
 export async function getOperatorWorldsView() {
@@ -133,6 +145,21 @@ export async function getOperatorWorldsViewWithDatabase(sql: Sql): Promise<Opera
     order by created_at desc
     limit 12
   `;
+  const schedules = competition.tournament_id
+    ? await sql<Array<{
+        id: string; stage_id: string; enabled: boolean; interval_minutes: number;
+        match_provider_ids: string[]; refresh_completed: boolean; next_run_at: string;
+        last_enqueued_at: string | null;
+      }>>`
+        select schedule.id, schedule.stage_id, schedule.enabled, schedule.interval_minutes,
+          schedule.match_provider_ids, schedule.refresh_completed, schedule.next_run_at::text,
+          schedule.last_enqueued_at::text
+        from stage_sync_schedules schedule
+        join tournament_stages stage on stage.id = schedule.stage_id
+        where stage.tournament_id = ${competition.tournament_id}
+        order by stage.sequence
+      `
+    : [];
 
   return {
     competitionId: competition.id,
@@ -183,6 +210,16 @@ export async function getOperatorWorldsViewWithDatabase(sql: Sql): Promise<Opera
       createdAt: job.created_at,
       startedAt: job.started_at,
       completedAt: job.completed_at,
+    })),
+    schedules: schedules.map((schedule) => ({
+      id: schedule.id,
+      stageId: schedule.stage_id,
+      enabled: schedule.enabled,
+      intervalMinutes: schedule.interval_minutes,
+      matchProviderIds: schedule.match_provider_ids,
+      refreshCompleted: schedule.refresh_completed,
+      nextRunAt: schedule.next_run_at,
+      lastEnqueuedAt: schedule.last_enqueued_at,
     })),
   };
 }

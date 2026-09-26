@@ -16,9 +16,11 @@ import { getServerEnv } from "@/lib/env/server";
 import { requireOperator } from "@/lib/operators/access";
 import { enqueueStageBootstrapJob, stageBootstrapJobPayloadSchema } from "@/lib/operators/jobs";
 import { getOperatorWorldsView } from "@/lib/operators/queries";
+import { setStageSyncScheduleEnabled, upsertStageSyncSchedule } from "@/lib/operators/schedules";
 import { CitoEsportsDataProvider } from "@/lib/providers/cito/client";
 
 const candidateIdSchema = z.uuid();
+const stageIdSchema = z.uuid();
 
 function provider() {
   const apiKey = getServerEnv().CITO_API_KEY;
@@ -120,6 +122,51 @@ export async function enqueueWorldsStageBootstrapAction(formData: FormData) {
       : `${payload.stageName} already has a ${job.status.toLowerCase()} job.`;
   } catch {
     finish("Stage request was rejected. Check its name, slug, future lock, and selected teams.", true);
+  }
+  finish(message);
+}
+
+export async function configureWorldsStageSyncAction(formData: FormData) {
+  const operator = await requireOperator();
+  let message: string;
+  try {
+    const stageId = stageIdSchema.parse(formData.get("stageId"));
+    const intervalMinutes = z.coerce.number().int().min(5).max(1_440).parse(formData.get("intervalMinutes"));
+    const matchProviderIds = String(formData.get("matchIds") ?? "")
+      .split(/[\s,]+/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const view = await getOperatorWorldsView();
+    const stage = view?.stages.find((entry) => entry.id === stageId);
+    if (!stage || !["OPEN", "LOCKED", "LIVE"].includes(stage.status)) {
+      throw new Error("That stage cannot be scheduled.");
+    }
+    await upsertStageSyncSchedule(getDatabase(), operator.userId, {
+      stageId,
+      intervalMinutes,
+      matchProviderIds,
+      refreshCompleted: formData.get("refreshCompleted") === "true",
+    });
+    message = `Scheduled ${stage.name} every ${intervalMinutes} minutes.`;
+  } catch {
+    finish("Sync schedule was rejected. Check the stage, interval, and complete unique match manifest.", true);
+  }
+  finish(message);
+}
+
+export async function toggleWorldsStageSyncAction(formData: FormData) {
+  await requireOperator();
+  let message: string;
+  try {
+    const stageId = stageIdSchema.parse(formData.get("stageId"));
+    const enabled = formData.get("enabled") === "true";
+    const view = await getOperatorWorldsView();
+    const stage = view?.stages.find((entry) => entry.id === stageId);
+    if (!stage) throw new Error("Stage not found.");
+    await setStageSyncScheduleEnabled(getDatabase(), stageId, enabled);
+    message = `${stage.name} synchronization ${enabled ? "resumed" : "paused"}.`;
+  } catch {
+    finish("The synchronization schedule could not be changed.", true);
   }
   finish(message);
 }
