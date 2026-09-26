@@ -6,6 +6,9 @@ import {
   normalizeMatch,
   normalizePlayerStats,
   normalizeTournament,
+  normalizeTournamentTeams,
+  normalizeTeamRoster,
+  normalizePlayerAggregateStats,
 } from "./normalize";
 
 const BASE_URL = "https://api.citoapi.com/api/v1";
@@ -31,7 +34,7 @@ function retryDelay(response: Response | null, attempt: number) {
   const header = response?.headers.get("retry-after");
   if (header) {
     const seconds = Number(header);
-    if (Number.isFinite(seconds)) return Math.min(seconds * 1_000, 10_000);
+    if (Number.isFinite(seconds)) return Math.min(seconds * 1_000, 60_000);
   }
   return Math.min(250 * 2 ** attempt + Math.floor(Math.random() * 100), 2_500);
 }
@@ -84,6 +87,22 @@ export class CitoEsportsDataProvider implements EsportsDataProvider {
 
   async getTournament(tournamentId: string) {
     return normalizeTournament(await this.get(`/lol/tournaments/${encodeURIComponent(tournamentId)}`));
+  }
+
+  async getTournamentTeams(tournamentId: string) {
+    return normalizeTournamentTeams(
+      await this.get(`/lol/tournaments/${encodeURIComponent(tournamentId)}/matches`),
+    );
+  }
+
+  async getTeamRoster(teamId: string) {
+    return normalizeTeamRoster(await this.get(`/lol/teams/${encodeURIComponent(teamId)}/roster`), teamId);
+  }
+
+  async getPlayerAggregateStats(playerId: string) {
+    return normalizePlayerAggregateStats(
+      await this.get(`/lol/players/${encodeURIComponent(playerId)}/stats`),
+    );
   }
 
   async getMatch(matchId: string, tournamentId: string) {

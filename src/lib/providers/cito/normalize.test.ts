@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { canonicalRole, normalizeGame, normalizePlayerStats } from "./normalize";
+import {
+  canonicalRole,
+  normalizeGame,
+  normalizePlayerAggregateStats,
+  normalizePlayerStats,
+  normalizeTeamRoster,
+  normalizeTournamentTeams,
+} from "./normalize";
 
 describe("Cito normalization", () => {
   it.each([
@@ -77,5 +84,31 @@ describe("Cito normalization", () => {
       role: "BOT",
       won: true,
     });
+  });
+
+  it("discovers unique tournament teams and ignores TBD placeholders", () => {
+    const teams = normalizeTournamentTeams({ matches: [
+      { team1: { slug: "c9", name: "Cloud9", logoUrl: "https://example.com/c9.png" }, team2: { slug: "tbd", name: "TBD" } },
+      { team1: { slug: "c9", name: "Cloud9" }, team2: { slug: "fly", name: "FlyQuest" } },
+    ] });
+    expect(teams.map(({ team }) => team.providerId)).toEqual(["c9", "fly"]);
+    expect(teams[0].team.imageUrl).toBe("https://example.com/c9.png");
+  });
+
+  it("normalizes roster freshness, starters, images, and aggregate stats", () => {
+    const roster = normalizeTeamRoster({
+      team: { slug: "sr", name: "Shopify Rebellion" },
+      rosterStatus: { status: "stale", message: "Old roster", lastCheckedAt: "2026-08-01T00:00:00Z" },
+      data: [{
+        lolPlayerId: "player-1", role: "ADC", isStarter: true, isActive: true,
+        imageUrl: "https://example.com/player.png", player: { currentIgn: "Carry" },
+      }],
+    }, "sr");
+    expect(roster).toMatchObject({
+      status: "stale",
+      players: [{ role: "BOT", isStarter: true, isActive: true, player: { displayName: "Carry" } }],
+    });
+    expect(normalizePlayerAggregateStats({ gamesPlayed: 10, wins: 6, avgKills: 4, avgDeaths: 2, avgAssists: 7, avgCs: 250 }))
+      .toMatchObject({ gamesPlayed: 10, wins: 6, winRate: 0, avgKills: 4, avgCs: 250 });
   });
 });

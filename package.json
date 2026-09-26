@@ -16,9 +16,13 @@
     "db:reset": "supabase db reset",
     "ingest:fixture": "tsx scripts/ingest-fixture.ts",
     "ingest:cito": "tsx scripts/ingest-cito.ts",
-    "scores:recalculate": "tsx scripts/recalculate-scores.ts"
+    "scores:recalculate": "tsx scripts/recalculate-scores.ts",
+    "stage:bootstrap": "tsx scripts/bootstrap-stage.ts",
+    "stage:set-lock": "tsx scripts/set-stage-lock.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "clsx": "^2.1.1",
     "decimal.js": "^10.6.0",
@@ -32,6 +36,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.3",
     "@types/react": "^19.3.0",

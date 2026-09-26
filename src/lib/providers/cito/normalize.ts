@@ -6,6 +6,9 @@ import type {
   NormalizedTeam,
   NormalizedTournament,
   ProRole,
+  PlayerAggregateStats,
+  TeamRoster,
+  TournamentTeam,
 } from "@/lib/domain/types";
 
 type JsonRecord = Record<string, unknown>;
@@ -115,7 +118,86 @@ function normalizeTeamValue(value: unknown, context: string): NormalizedTeam {
     providerId: text(source, ["id", "teamId", "team_id", "slug"], true)!,
     name: text(source, ["name", "teamName", "displayName", "slug"], true)!,
     abbreviation: text(source, ["abbreviation", "code", "shortName", "acronym"]),
+    imageUrl: text(source, ["logoUrl", "imageUrl", "logo"]),
     raw: value,
+  };
+}
+
+export function normalizeTournamentTeams(payload: unknown): TournamentTeam[] {
+  const matches = arrayAt(payload, ["matches", "items"]);
+  const teams = new Map<string, TournamentTeam>();
+  for (const match of matches) {
+    const source = record(match, "tournament match");
+    for (const candidate of [valueAt(source, ["team1", "homeTeam"]), valueAt(source, ["team2", "awayTeam"])]) {
+      if (!candidate) continue;
+      const team = normalizeTeamValue(candidate, "tournament team");
+      if (team.providerId.toLowerCase() === "tbd") continue;
+      const existing = teams.get(team.providerId);
+      teams.set(team.providerId, {
+        team: { ...team, imageUrl: team.imageUrl ?? existing?.team.imageUrl ?? null },
+        raw: candidate,
+      });
+    }
+  }
+  return [...teams.values()].sort((left, right) => left.team.name.localeCompare(right.team.name));
+}
+
+export function normalizeTeamRoster(payload: unknown, requestedTeamId: string): TeamRoster {
+  const source = record(payload, "team roster");
+  const teamValue = valueAt(source, ["team"]);
+  const team = teamValue ? normalizeTeamValue(teamValue, "roster team") : {
+    provider: "cito" as const,
+    providerId: requestedTeamId,
+    name: requestedTeamId,
+    abbreviation: null,
+    imageUrl: null,
+    raw: {},
+  };
+  const statusValue = valueAt(source, ["rosterStatus"]);
+  const statusSource = statusValue && typeof statusValue === "object" ? record(statusValue, "roster status") : {};
+  const players = arrayAt(source, ["data", "roster"]).map((value, index) => {
+    const row = record(value, `roster player ${index + 1}`);
+    const playerValue = valueAt(row, ["player"]);
+    const player = playerValue && typeof playerValue === "object" ? record(playerValue, "roster player detail") : row;
+    const roleText = text(row, ["role", "position"]);
+    return {
+      player: {
+        provider: "cito" as const,
+        providerId: text(row, ["lolPlayerId", "playerId", "id"], true)!,
+        displayName: text(player, ["currentIgn", "playerName", "displayName", "name"], true)!,
+        role: canonicalRole(roleText),
+        teamProviderId: team.providerId,
+        imageUrl: text(row, ["imageUrl", "player.imageUrl"]),
+        raw: value,
+      },
+      role: canonicalRole(roleText),
+      isStarter: booleanValue(row, ["isStarter"]) ?? false,
+      isActive: booleanValue(row, ["isActive"]) ?? false,
+      raw: value,
+    };
+  });
+  return {
+    team,
+    status: text(statusSource, ["status"]),
+    statusMessage: text(statusSource, ["message"]),
+    checkedAt: dateText(statusSource, ["lastCheckedAt"]),
+    players,
+    raw: payload,
+  };
+}
+
+export function normalizePlayerAggregateStats(payload: unknown): PlayerAggregateStats {
+  const source = record(unwrap(payload), "player aggregate stats");
+  return {
+    gamesPlayed: numberValue(source, ["gamesPlayed"], 0)!,
+    wins: numberValue(source, ["wins"], 0)!,
+    losses: numberValue(source, ["losses"], 0)!,
+    winRate: numberValue(source, ["winRate"], 0)!,
+    avgKills: numberValue(source, ["avgKills"], 0)!,
+    avgDeaths: numberValue(source, ["avgDeaths"], 0)!,
+    avgAssists: numberValue(source, ["avgAssists"], 0)!,
+    avgCs: numberValue(source, ["avgCs"], 0)!,
+    raw: payload,
   };
 }
 

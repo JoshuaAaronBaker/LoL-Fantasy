@@ -1,6 +1,6 @@
 # Database
 
-The schema is created by `supabase/migrations/202609250001_foundation.sql`.
+The schema is created by the versioned files in `supabase/migrations`.
 
 ## Source entities
 
@@ -17,4 +17,13 @@ Every provider entity has a uniqueness constraint on `(provider, provider_id)`. 
 - `player_game_scores` is a reproducible materialization, unique by stat row and ruleset.
 - `ingestion_runs` records status and row counts without storing credentials.
 
-RLS is enabled on every table and access is revoked from `anon` and `authenticated`. This milestone reads and writes through server-only PostgreSQL connections. User-facing policies will be introduced with authentication, once their exact ownership rules exist.
+## Authentication and roster building
+
+- `profiles` maps a Supabase Auth identity to a case-preserving, case-insensitively unique username.
+- `tournament_teams` records the teams discovered in a provider tournament.
+- `tournament_players` snapshots a player's stage team, role, starter status, eligibility, and roster freshness.
+- `player_stage_prices` snapshots projected FP/G, role percentile, algorithm version, price, and source stats.
+- `fantasy_rosters` is unique per user and stage and stores the captain, submitted salary, and submission time.
+- `fantasy_roster_players` stores the five role-unique selections with acquisition-price and team snapshots.
+
+RLS is enabled on every table. Authenticated users can read the fantasy catalog, read/update their own profile, and access only their own roster rows. The application still verifies identity in every server mutation and performs authoritative writes in a database transaction.

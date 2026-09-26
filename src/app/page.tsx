@@ -1,17 +1,19 @@
 import Link from "next/link";
-import { ArrowRight, Braces, DatabaseZap, ShieldCheck } from "lucide-react";
+import { ArrowRight, Braces, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { PipelineEmptyState } from "@/components/pipeline-empty-state";
 import { getLatestGame } from "@/lib/db/queries";
+import { getFeaturedStage } from "@/lib/rosters/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   let latest = null;
   let databaseUnavailable = false;
+  let featuredStage = null;
   try {
-    latest = await getLatestGame();
+    [latest, featuredStage] = await Promise.all([getLatestGame(), getFeaturedStage()]);
   } catch {
     databaseUnavailable = true;
   }
@@ -19,14 +21,15 @@ export default async function Home() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
       <div className="max-w-3xl">
-        <Badge className="border-lime-300/20 bg-lime-300/8 text-lime-300">Technical milestone 01</Badge>
+        <Badge className="border-lime-300/20 bg-lime-300/8 text-lime-300">LCS Fantasy · Development season</Badge>
         <h1 className="mt-6 text-4xl font-black leading-[0.98] tracking-[-0.04em] text-white sm:text-6xl">
-          Completed games in.
-          <br />Deterministic scores out.
+          Draft the five.
+          <br />Own every fight.
         </h1>
         <p className="mt-6 max-w-2xl text-base leading-7 text-zinc-400 sm:text-lg">
-          The first LoL Fantasy vertical slice stores authoritative esports stats locally, applies a versioned scoring model, and can safely replay the same game without duplicating points.
+          Build a role-complete LCS roster from real competitive data. Stay under the cap, pick your captain, and lock in before the stage begins.
         </p>
+        {featuredStage && <Link href={`/play/${featuredStage.slug}`} className="mt-7 inline-flex items-center gap-2 rounded-xl bg-lime-300 px-5 py-3 text-sm font-black text-zinc-950 transition hover:bg-lime-200">Build your lineup <ArrowRight className="size-4" /></Link>}
       </div>
 
       <section className="mt-12">
@@ -57,11 +60,11 @@ export default async function Home() {
 
       <section className="mt-8 grid gap-4 sm:grid-cols-3">
         {[
-          [DatabaseZap, "Local first", "Versioned PostgreSQL migrations and stored source payloads."],
-          [Braces, "Provider boundary", "Cito response validation stays outside fantasy domain logic."],
-          [ShieldCheck, "Replay safe", "Unique provider IDs and upserts make ingestion idempotent."],
+          [Users, "Five roles", "Draft one starter at Top, Jungle, Mid, Bot, and Support."],
+          [Braces, "Smart pricing", "Role-balanced prices turn performance into meaningful choices."],
+          [ShieldCheck, "Server verified", "Every lineup is re-priced and validated when you submit."],
         ].map(([Icon, title, description]) => {
-          const Component = Icon as typeof DatabaseZap;
+          const Component = Icon as typeof Users;
           return (
             <Card key={String(title)} className="p-5">
               <Component className="size-5 text-zinc-500" aria-hidden="true" />

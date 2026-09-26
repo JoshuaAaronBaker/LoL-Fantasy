@@ -3,6 +3,9 @@ import type {
   NormalizedMatch,
   NormalizedPlayerGameStat,
   NormalizedTournament,
+  PlayerAggregateStats,
+  TeamRoster,
+  TournamentTeam,
 } from "@/lib/domain/types";
 
 export interface PlayerStatsResult {
@@ -13,6 +16,9 @@ export interface PlayerStatsResult {
 export interface EsportsDataProvider {
   readonly name: "cito";
   getTournament(tournamentId: string): Promise<NormalizedTournament>;
+  getTournamentTeams(tournamentId: string): Promise<TournamentTeam[]>;
+  getTeamRoster(teamId: string): Promise<TeamRoster>;
+  getPlayerAggregateStats(playerId: string): Promise<PlayerAggregateStats>;
   getMatch(matchId: string, tournamentId: string): Promise<NormalizedMatch>;
   getMatchGames(matchId: string): Promise<NormalizedGame[]>;
   getGame(gameId: string, matchId: string): Promise<NormalizedGame>;

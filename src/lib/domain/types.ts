@@ -17,6 +17,7 @@ export interface NormalizedTeam {
   providerId: string;
   name: string;
   abbreviation: string | null;
+  imageUrl?: string | null;
   raw: unknown;
 }
 
@@ -26,6 +27,41 @@ export interface NormalizedPlayer {
   displayName: string;
   role: ProRole | null;
   teamProviderId: string;
+  imageUrl?: string | null;
+  raw: unknown;
+}
+
+export interface TournamentTeam {
+  team: NormalizedTeam;
+  raw: unknown;
+}
+
+export interface TeamRosterPlayer {
+  player: NormalizedPlayer;
+  role: ProRole | null;
+  isStarter: boolean;
+  isActive: boolean;
+  raw: unknown;
+}
+
+export interface TeamRoster {
+  team: NormalizedTeam;
+  status: string | null;
+  statusMessage: string | null;
+  checkedAt: string | null;
+  players: TeamRosterPlayer[];
+  raw: unknown;
+}
+
+export interface PlayerAggregateStats {
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  avgKills: number;
+  avgDeaths: number;
+  avgAssists: number;
+  avgCs: number;
   raw: unknown;
 }
 

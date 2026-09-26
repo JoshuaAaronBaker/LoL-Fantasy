@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
 import type { EsportsDataProvider, PlayerStatsResult } from "./esports-data-provider";
-import type { NormalizedGame } from "@/lib/domain/types";
+import type { NormalizedGame, PlayerAggregateStats, TeamRoster, TournamentTeam } from "@/lib/domain/types";
 import {
   normalizeGame,
   normalizeGames,
@@ -34,6 +34,18 @@ export class FixtureEsportsDataProvider implements EsportsDataProvider {
 
   async getTournament() {
     return normalizeTournament(this.document.tournament);
+  }
+
+  async getTournamentTeams(): Promise<TournamentTeam[]> {
+    throw new Error("The completed-match fixture does not include a tournament team catalog.");
+  }
+
+  async getTeamRoster(): Promise<TeamRoster> {
+    throw new Error("The completed-match fixture does not include team rosters.");
+  }
+
+  async getPlayerAggregateStats(): Promise<PlayerAggregateStats> {
+    throw new Error("The completed-match fixture does not include aggregate player stats.");
   }
 
   async getMatch(_matchId: string, tournamentId: string) {
