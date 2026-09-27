@@ -24,6 +24,7 @@ const players: CatalogPlayer[] = roles.flatMap((role, roleIndex) => teams.map((t
   avgDeaths: 2,
   avgAssists: 5,
   avgCs: 200,
+  avgVisionScore: role === "SUPPORT" ? 80 : 30,
   winRate: 0.5,
   projectedPpg: 17.5 + roleIndex,
   rolePercentile: 0.5,
@@ -69,4 +70,3 @@ suite("stage catalog repository", () => {
     `).rejects.toThrow(/immutable/i);
   });
 });
-

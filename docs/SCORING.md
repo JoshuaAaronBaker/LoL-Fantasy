@@ -1,6 +1,6 @@
 # Scoring
 
-`default-v2` scores individual player performance without awarding points for a team win:
+`default-v3` scores individual player performance without awarding points for a team win. The default weights are:
 
 | Metric | Points |
 | --- | ---: |
@@ -8,6 +8,18 @@
 | Assist | +1.50 |
 | Death | -1.00 |
 | CS | +0.01 |
+
+Supports use role-specific overrides and receive vision scoring:
+
+| Support metric | Points |
+| --- | ---: |
+| Kill | +3.00 |
+| Assist | +1.75 |
+| Death | -0.75 |
+| CS | +0.01 |
+| Vision score | +0.025 |
+
+Vision score is taken from Cito's finalized game-stat payload. A finalized live game with a missing support vision score is rejected instead of silently treating the value as zero.
 
 Calculations use `decimal.js` and round half-up to two decimals. The canonical product example is:
 
@@ -25,4 +37,4 @@ Base player-game scores remain immutable inputs. For each fantasy stage, assigne
 
 Opponent selections and player-level score breakdowns remain hidden until the stage's database lock time. Usernames, ranks, and roster totals are visible to authenticated competitors on the global leaderboard.
 
-The original `default-v1` ruleset, which included a win bonus, remains stored for historical reproducibility but is inactive. First-blood and multikill bonuses remain disabled until a real Cito payload confirms reliable source fields. Add a new immutable ruleset version rather than editing rules used by completed competitions.
+The original `default-v1` ruleset, which included a win bonus, and `default-v2`, which removed that bonus before role balancing, remain stored for historical reproducibility but are inactive. First-blood and multikill bonuses remain disabled. Add a new immutable ruleset version rather than editing rules used by completed competitions.

@@ -54,7 +54,33 @@ suite("ingestion repository", () => {
     `;
     expect(score[0].base_score).toBe("41.37");
 
-    await expect(recalculateScores(sql!, "default-v2", "sample-game-1")).resolves.toMatchObject({ count: 10 });
+    const supportScore = await sql!<Array<{ vision_score: string; base_score: string }>>`
+      select stat.vision_score::text, score.base_score::text
+      from player_game_scores score
+      join player_game_stats stat on stat.id = score.player_game_stat_id
+      join pro_players player on player.id = stat.player_id
+      where player.provider_id = 'sample-blue-support'
+    `;
+    expect(supportScore[0]).toEqual({ vision_score: "118.00", base_score: "34.37" });
+
+    await expect(recalculateScores(sql!, "default-v3", "sample-game-1")).resolves.toMatchObject({ count: 10 });
+  });
+
+  it("rejects finalized live support stats without vision score", async () => {
+    const provider = await FixtureEsportsDataProvider.fromFile(
+      resolve(process.cwd(), "fixtures/cito/completed-match.json"),
+    );
+    const bundle = await loadCompletedMatch(provider, {
+      tournamentId: "sample-worlds-2026",
+      matchId: "sample-match-1",
+    });
+    const support = bundle.games[0].stats.find((stat) => stat.role === "SUPPORT");
+    expect(support).toBeDefined();
+    support!.visionScore = null;
+
+    await expect(persistIngestionBundle(sql!, bundle, "live")).rejects.toThrow(
+      /final vision score is missing/i,
+    );
   });
 
   it("rolls back domain rows and records a failed run", async () => {

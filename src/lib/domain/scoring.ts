@@ -1,7 +1,7 @@
 import Decimal from "decimal.js";
 import type { ProRole } from "./types";
 
-export type ScoringMetric = "kills" | "deaths" | "assists" | "cs" | "win";
+export type ScoringMetric = "kills" | "deaths" | "assists" | "cs" | "vision" | "win";
 
 export interface ScoringRule {
   metric: ScoringMetric;
@@ -14,6 +14,7 @@ export interface ScoreableStats {
   deaths: number;
   assists: number;
   cs: number;
+  visionScore?: number | null;
   won: boolean;
   role: ProRole | null;
 }
@@ -23,10 +24,11 @@ export interface ScoreResult {
   breakdown: Record<ScoringMetric, string>;
 }
 
-const METRICS: ScoringMetric[] = ["kills", "deaths", "assists", "cs", "win"];
+const METRICS: ScoringMetric[] = ["kills", "deaths", "assists", "cs", "vision", "win"];
 
 function unitsFor(metric: ScoringMetric, stats: ScoreableStats) {
   if (metric === "win") return stats.won ? 1 : 0;
+  if (metric === "vision") return stats.visionScore ?? 0;
   return stats[metric];
 }
 

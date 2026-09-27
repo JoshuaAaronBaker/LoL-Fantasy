@@ -17,7 +17,14 @@ describe("fantasy scoring", () => {
 
     expect(result).toEqual({
       total: "41.37",
-      breakdown: { kills: "24.00", deaths: "-2.00", assists: "16.50", cs: "2.87", win: "0.00" },
+      breakdown: {
+        kills: "24.00",
+        deaths: "-2.00",
+        assists: "16.50",
+        cs: "2.87",
+        vision: "0.00",
+        win: "0.00",
+      },
     });
     expect(applyCaptainMultiplier(result.total, 1.5)).toBe("62.06");
   });
@@ -34,10 +41,24 @@ describe("fantasy scoring", () => {
 
   it("prefers a matching role rule over the global rule", () => {
     const result = calculateFantasyScore(
-      { kills: 0, deaths: 0, assists: 10, cs: 0, won: false, role: "SUPPORT" },
-      [...rules, { metric: "assists", pointsPerUnit: 2, role: "SUPPORT" }],
+      {
+        kills: 1,
+        deaths: 2,
+        assists: 10,
+        cs: 35,
+        visionScore: 100,
+        won: false,
+        role: "SUPPORT",
+      },
+      [
+        ...rules,
+        { metric: "deaths", pointsPerUnit: -0.75, role: "SUPPORT" },
+        { metric: "assists", pointsPerUnit: 1.75, role: "SUPPORT" },
+        { metric: "vision", pointsPerUnit: 0.025, role: "SUPPORT" },
+      ],
     );
-    expect(result.total).toBe("20.00");
+    expect(result.total).toBe("21.85");
+    expect(result.breakdown.vision).toBe("2.50");
   });
 
   it("handles a zero-stat loss", () => {

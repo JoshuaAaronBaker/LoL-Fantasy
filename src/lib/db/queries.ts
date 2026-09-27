@@ -10,6 +10,7 @@ export interface GameScoreRow {
   deaths: number;
   assists: number;
   cs: string;
+  visionScore: string | null;
   won: boolean;
   baseScore: string;
   breakdown: Record<string, string>;
@@ -66,6 +67,7 @@ export async function getGameScoreView(providerGameId: string): Promise<GameScor
       deaths: number;
       assists: number;
       cs: string;
+      vision_score: string | null;
       won: boolean;
       base_score: string;
       breakdown: Record<string, string>;
@@ -73,7 +75,8 @@ export async function getGameScoreView(providerGameId: string): Promise<GameScor
   >`
     select p.display_name as player_name, team.name as team_name,
            team.abbreviation as team_abbreviation, s.role, s.kills, s.deaths,
-           s.assists, s.cs::text, s.won, score.base_score::text, score.breakdown
+           s.assists, s.cs::text, s.vision_score::text, s.won,
+           score.base_score::text, score.breakdown
     from games g
     join player_game_stats s on s.game_id = g.id
     join pro_players p on p.id = s.player_id
@@ -104,6 +107,7 @@ export async function getGameScoreView(providerGameId: string): Promise<GameScor
       deaths: row.deaths,
       assists: row.assists,
       cs: row.cs,
+      visionScore: row.vision_score,
       won: row.won,
       baseScore: row.base_score,
       breakdown: row.breakdown,

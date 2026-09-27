@@ -8,6 +8,7 @@ const performance = (playerId: string, avgKills: number): PlayerPerformance => (
   avgDeaths: 2,
   avgAssists: 5,
   avgCs: 250,
+  avgVisionScore: 50,
   winRate: 0.5,
 });
 
@@ -21,6 +22,17 @@ describe("stage pricing", () => {
     const highWinRate = { ...performance("high", 4), winRate: 0.8 };
 
     expect(projectedFantasyPpg(lowWinRate)).toBe(projectedFantasyPpg(highWinRate));
+  });
+
+  it("uses support-specific assists, deaths, and vision weights", () => {
+    expect(projectedFantasyPpg({
+      ...performance("support", 1),
+      role: "SUPPORT",
+      avgDeaths: 2,
+      avgAssists: 10,
+      avgCs: 35,
+      avgVisionScore: 100,
+    })).toBe(21.85);
   });
 
   it("maps role rank to rounded prices", () => {

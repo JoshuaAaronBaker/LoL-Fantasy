@@ -68,6 +68,7 @@ export interface PlayerAggregateStats {
   avgDeaths: number;
   avgAssists: number;
   avgCs: number;
+  avgVisionScore: number | null;
   raw: unknown;
 }
 
@@ -104,6 +105,7 @@ export interface NormalizedPlayerGameStat {
   deaths: number;
   assists: number;
   cs: number;
+  visionScore: number | null;
   won: boolean;
   raw: unknown;
 }

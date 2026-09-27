@@ -6,7 +6,7 @@ The schema is created by the versioned files in `supabase/migrations`.
 
 - `tournaments` and `tournament_stages` separate provider competitions from fantasy roster periods.
 - `matches` belongs to a tournament. Its nullable `stage_id` prevents the importer from inventing product stage mappings; the provider's label is retained separately.
-- `games`, `pro_teams`, `pro_players`, and `player_game_stats` retain stable provider IDs and raw source payloads.
+- `games`, `pro_teams`, `pro_players`, and `player_game_stats` retain stable provider IDs and raw source payloads. Player-game stats normalize KDA, CS, result, and vision score for deterministic scoring.
 
 Every provider entity has a uniqueness constraint on `(provider, provider_id)`. A player's game statistics are unique on `(game_id, player_id)`.
 

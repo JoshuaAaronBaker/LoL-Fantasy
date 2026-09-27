@@ -24,6 +24,7 @@ function scoringStatsHash(stats: IngestionBundle["games"][number]["stats"]) {
       deaths: stat.deaths,
       assists: stat.assists,
       cs: stat.cs,
+      visionScore: stat.visionScore,
       won: stat.won,
     }))
     .sort((left, right) => left.playerId.localeCompare(right.playerId));
@@ -48,7 +49,7 @@ async function upsertTeam(sql: Db, team: NormalizedTeam) {
   return rows[0].id;
 }
 
-async function activeRules(sql: Db, ruleSetKey = "default-v2") {
+async function activeRules(sql: Db, ruleSetKey = "default-v3") {
   const sets = await sql<Array<{ id: string; name: string; captain_multiplier: string }>>`
     select id, name, captain_multiplier::text
     from fantasy_scoring_rule_sets
@@ -178,6 +179,14 @@ export async function persistIngestionBundle(
         const currentPlayerIds: string[] = [];
 
         for (const stat of item.stats) {
+          if (
+            sourceKind === "live" &&
+            item.game.status === "COMPLETED" &&
+            stat.role === "SUPPORT" &&
+            stat.visionScore === null
+          ) {
+            throw new Error(`Final vision score is missing for support ${stat.player.displayName}.`);
+          }
           const teamId = teamIds.get(stat.team.providerId);
           if (!teamId) throw new Error(`Normalized team ${stat.team.providerId} was not persisted.`);
           const playerRows = await tx<Array<{ id: string }>>`
@@ -198,10 +207,12 @@ export async function persistIngestionBundle(
           currentPlayerIds.push(playerId);
           const statRows = await tx<Array<{ id: string }>>`
             insert into player_game_stats (
-              game_id, player_id, team_id, role, provider_role, kills, deaths, assists, cs, won, raw_payload
+              game_id, player_id, team_id, role, provider_role, kills, deaths, assists, cs,
+              vision_score, won, raw_payload
             ) values (
               ${gameId}, ${playerId}, ${teamId}, ${stat.role}, ${stat.providerRole}, ${stat.kills},
-              ${stat.deaths}, ${stat.assists}, ${stat.cs}, ${stat.won}, ${json(stat.raw)}::jsonb
+              ${stat.deaths}, ${stat.assists}, ${stat.cs}, ${stat.visionScore}, ${stat.won},
+              ${json(stat.raw)}::jsonb
             )
             on conflict (game_id, player_id) do update set
               team_id = excluded.team_id,
@@ -211,6 +222,7 @@ export async function persistIngestionBundle(
               deaths = excluded.deaths,
               assists = excluded.assists,
               cs = excluded.cs,
+              vision_score = excluded.vision_score,
               won = excluded.won,
               raw_payload = excluded.raw_payload
             returning id
@@ -277,11 +289,13 @@ export async function recalculateScores(sql: Sql, ruleSetKey: string, providerGa
         deaths: number;
         assists: number;
         cs: string;
+        vision_score: string | null;
         won: boolean;
         role: ProRole | null;
       }>
     >`
-      select s.id, s.kills, s.deaths, s.assists, s.cs::text, s.won, s.role
+      select s.id, s.kills, s.deaths, s.assists, s.cs::text,
+             s.vision_score::text, s.won, s.role
       from player_game_stats s
       join games g on g.id = s.game_id
       where ${providerGameId ? tx`g.provider_id = ${providerGameId}` : tx`true`}
@@ -289,7 +303,7 @@ export async function recalculateScores(sql: Sql, ruleSetKey: string, providerGa
 
     for (const stat of stats) {
       const score = calculateFantasyScore(
-        { ...stat, cs: Number(stat.cs) },
+        { ...stat, cs: Number(stat.cs), visionScore: stat.vision_score === null ? null : Number(stat.vision_score) },
         ruleSet.rules,
       );
       await tx`

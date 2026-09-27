@@ -1,7 +1,7 @@
 import type { ProRole } from "./types";
 
 export const PRICING_METHOD = "role-percentile-8m-12m";
-export const PRICING_VERSION = 2;
+export const PRICING_VERSION = 3;
 
 export interface PlayerPerformance {
   playerId: string;
@@ -10,6 +10,7 @@ export interface PlayerPerformance {
   avgDeaths: number;
   avgAssists: number;
   avgCs: number;
+  avgVisionScore: number;
   winRate: number;
 }
 
@@ -20,6 +21,16 @@ export interface PlayerPrice extends PlayerPerformance {
 }
 
 export function projectedFantasyPpg(player: PlayerPerformance) {
+  if (player.role === "SUPPORT") {
+    return (
+      3 * player.avgKills -
+      0.75 * player.avgDeaths +
+      1.75 * player.avgAssists +
+      0.01 * player.avgCs +
+      0.025 * player.avgVisionScore
+    );
+  }
+
   return (
     3 * player.avgKills -
     player.avgDeaths +

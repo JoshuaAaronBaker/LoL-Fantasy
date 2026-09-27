@@ -10,13 +10,14 @@ function points(value: string | undefined) {
 export function ScoreTable({ rows }: { rows: GameScoreRow[] }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] border-collapse text-left">
+      <table className="w-full min-w-[820px] border-collapse text-left">
         <thead>
           <tr className="border-b border-white/8 text-[0.65rem] font-black uppercase tracking-[0.16em] text-zinc-500">
             <th className="px-5 py-4">Player</th>
             <th className="px-3 py-4">Role</th>
             <th className="px-3 py-4 text-center">K / D / A</th>
             <th className="px-3 py-4 text-right">CS</th>
+            <th className="px-3 py-4 text-right">Vision</th>
             <th className="px-3 py-4 text-center">Result</th>
             <th className="px-5 py-4 text-right">Fantasy</th>
           </tr>
@@ -42,6 +43,9 @@ export function ScoreTable({ rows }: { rows: GameScoreRow[] }) {
                 <span className="text-white">{row.kills}</span> / <span className="text-rose-300">{row.deaths}</span> / {row.assists}
               </td>
               <td className="px-3 py-4 text-right font-mono text-sm text-zinc-300">{Number(row.cs)}</td>
+              <td className="px-3 py-4 text-right font-mono text-sm text-zinc-300">
+                {row.visionScore === null ? "—" : Number(row.visionScore)}
+              </td>
               <td className="px-3 py-4 text-center">
                 <span className={row.won ? "text-lime-300" : "text-zinc-600"}>
                   {row.won ? <Check className="mx-auto size-4" aria-label="Win" /> : <Minus className="mx-auto size-4" aria-label="Loss" />}
@@ -49,8 +53,8 @@ export function ScoreTable({ rows }: { rows: GameScoreRow[] }) {
               </td>
               <td className="px-5 py-4 text-right">
                 <p className="font-mono text-lg font-black text-lime-300">{Number(row.baseScore).toFixed(2)}</p>
-                <p className="mt-1 text-[0.65rem] text-zinc-600" title="Kill + death + assist + CS breakdown">
-                  {points(row.breakdown.kills)} {points(row.breakdown.deaths)} {points(row.breakdown.assists)} {points(row.breakdown.cs)}
+                <p className="mt-1 text-[0.65rem] text-zinc-600" title="Kill + death + assist + CS + vision breakdown">
+                  K {points(row.breakdown.kills)} · D {points(row.breakdown.deaths)} · A {points(row.breakdown.assists)} · CS {points(row.breakdown.cs)} · V {points(row.breakdown.vision)}
                 </p>
               </td>
             </tr>

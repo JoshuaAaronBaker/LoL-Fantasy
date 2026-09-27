@@ -198,6 +198,7 @@ export function normalizePlayerAggregateStats(payload: unknown): PlayerAggregate
     avgDeaths: numberValue(source, ["avgDeaths"], 0)!,
     avgAssists: numberValue(source, ["avgAssists"], 0)!,
     avgCs: numberValue(source, ["avgCs"], 0)!,
+    avgVisionScore: numberValue(source, ["avgVisionScore", "visionScoreAvg"]),
     raw: payload,
   };
 }
@@ -334,6 +335,7 @@ export function normalizePlayerStats(payload: unknown, game: NormalizedGame): No
         deaths: numberValue(source, ["deaths", "d"], 0)!,
         assists: numberValue(source, ["assists", "a"], 0)!,
         cs: numberValue(source, ["cs", "creepScore", "totalCs", "minionsKilled"], 0)!,
+        visionScore: numberValue(source, ["visionScore", "vision_score"]),
         won: explicitWin ?? (game.winnerTeamProviderId === team.providerId),
         raw: value,
       };

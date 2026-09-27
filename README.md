@@ -53,11 +53,11 @@ The first form imports every completed game in the match. The second targets one
 ## Scoring recalculation
 
 ```bash
-npm run scores:recalculate -- --ruleset default-v2
-npm run scores:recalculate -- --ruleset default-v2 --game <game-id>
+npm run scores:recalculate -- --ruleset default-v3
+npm run scores:recalculate -- --ruleset default-v3 --game <game-id>
 ```
 
-The active rules are kills `+3`, assists `+1.5`, deaths `-1`, and CS `+0.01`. Wins do not award points. Stage totals apply the configured `1.5×` captain multiplier and are materialized idempotently for the global leaderboard.
+The active rules are kills `+3`, assists `+1.5`, deaths `-1`, and CS `+0.01`. Supports instead receive assists `+1.75`, deaths `-0.75`, and vision score `+0.025`. Wins do not award points. Stage totals apply the configured `1.5×` captain multiplier and are materialized idempotently for the global leaderboard.
 
 ## Build a fantasy stage
 

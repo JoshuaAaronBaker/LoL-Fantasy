@@ -25,6 +25,7 @@ const emptyStats = (raw: unknown = {}): PlayerAggregateStats => ({
   avgDeaths: 0,
   avgAssists: 0,
   avgCs: 0,
+  avgVisionScore: null,
   raw,
 });
 
@@ -92,6 +93,9 @@ export async function runStageBootstrap(
       stats = emptyStats({ unavailable: true });
     }
     collected.push({ item, stats });
+    if (item.row.role === "SUPPORT" && stats.avgVisionScore === null) {
+      warnings.push(`${item.row.player.displayName}: average vision score unavailable; zero-vision projection used.`);
+    }
   }
 
   const priced = pricePlayers(collected.map(({ item, stats }) => ({
@@ -101,6 +105,7 @@ export async function runStageBootstrap(
     avgDeaths: stats.avgDeaths,
     avgAssists: stats.avgAssists,
     avgCs: stats.avgCs,
+    avgVisionScore: stats.avgVisionScore ?? 0,
     winRate: stats.winRate,
   })));
   const priceById = new Map(priced.map((price) => [price.playerId, price]));

@@ -36,13 +36,22 @@ describe("Cito normalization", () => {
               deaths: 2,
               assists: 11,
               cs: 287,
+              visionScore: 24,
             },
           ],
         },
       },
       game,
     );
-    expect(stats[0]).toMatchObject({ kills: 8, deaths: 2, assists: 11, cs: 287, won: true, role: "MID" });
+    expect(stats[0]).toMatchObject({
+      kills: 8,
+      deaths: 2,
+      assists: 11,
+      cs: 287,
+      visionScore: 24,
+      won: true,
+      role: "MID",
+    });
   });
 
   it("normalizes the completed-game shape returned by Cito", () => {
@@ -109,8 +118,22 @@ describe("Cito normalization", () => {
       status: "stale",
       players: [{ role: "BOT", isStarter: true, isActive: true, player: { displayName: "Carry" } }],
     });
-    expect(normalizePlayerAggregateStats({ gamesPlayed: 10, wins: 6, avgKills: 4, avgDeaths: 2, avgAssists: 7, avgCs: 250 }))
-      .toMatchObject({ gamesPlayed: 10, wins: 6, winRate: 0, avgKills: 4, avgCs: 250 });
+    expect(normalizePlayerAggregateStats({
+      gamesPlayed: 10,
+      wins: 6,
+      avgKills: 4,
+      avgDeaths: 2,
+      avgAssists: 7,
+      avgCs: 250,
+      avgVisionScore: 80,
+    })).toMatchObject({
+      gamesPlayed: 10,
+      wins: 6,
+      winRate: 0,
+      avgKills: 4,
+      avgCs: 250,
+      avgVisionScore: 80,
+    });
   });
 
   it("normalizes the paginated tournament catalog", () => {
