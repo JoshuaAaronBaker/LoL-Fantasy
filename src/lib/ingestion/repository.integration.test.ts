@@ -52,9 +52,9 @@ suite("ingestion repository", () => {
       join pro_players player on player.id = stat.player_id
       where player.provider_id = 'sample-blue-mid'
     `;
-    expect(score[0].base_score).toBe("43.37");
+    expect(score[0].base_score).toBe("41.37");
 
-    await expect(recalculateScores(sql!, "default-v1", "sample-game-1")).resolves.toMatchObject({ count: 10 });
+    await expect(recalculateScores(sql!, "default-v2", "sample-game-1")).resolves.toMatchObject({ count: 10 });
   });
 
   it("rolls back domain rows and records a failed run", async () => {

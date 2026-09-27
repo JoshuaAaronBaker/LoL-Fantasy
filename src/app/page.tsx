@@ -2,20 +2,8 @@ import Link from "next/link";
 import { ArrowRight, Braces, Globe2, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { PipelineEmptyState } from "@/components/pipeline-empty-state";
-import { getLatestGame } from "@/lib/db/queries";
 
-export const dynamic = "force-dynamic";
-
-export default async function Home() {
-  let latest = null;
-  let databaseUnavailable = false;
-  try {
-    latest = await getLatestGame();
-  } catch {
-    databaseUnavailable = true;
-  }
-
+export default function Home() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
       <div className="max-w-3xl">
@@ -30,33 +18,7 @@ export default async function Home() {
         <Link href="/worlds" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-lime-300 px-5 py-3 text-sm font-black text-zinc-950 transition hover:bg-lime-200">Enter Worlds <ArrowRight className="size-4" /></Link>
       </div>
 
-      <section className="mt-12">
-        {latest ? (
-          <Link href={`/games/${encodeURIComponent(latest.providerGameId)}`} className="group block">
-            <Card className="overflow-hidden p-1 transition duration-300 group-hover:border-cyan-300/25">
-              <div className="flex flex-col gap-6 rounded-[0.8rem] bg-gradient-to-br from-white/[0.055] to-transparent p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Badge className={latest.sourceKind === "fixture" ? "text-amber-300" : "text-cyan-300"}>
-                      {latest.sourceKind === "fixture" ? "Sample fixture" : "Cito live data"}
-                    </Badge>
-                    <span className="text-xs text-zinc-600">{new Date(latest.ingestedAt).toLocaleString()}</span>
-                  </div>
-                  <h2 className="mt-4 text-2xl font-bold text-white">{latest.tournamentName}</h2>
-                  <p className="mt-1 font-mono text-sm text-zinc-500">{latest.providerGameId}</p>
-                </div>
-                <span className="flex items-center gap-2 text-sm font-black text-cyan-300">
-                  View scored game <ArrowRight className="size-4 transition group-hover:translate-x-1" />
-                </span>
-              </div>
-            </Card>
-          </Link>
-        ) : (
-          <PipelineEmptyState databaseUnavailable={databaseUnavailable} />
-        )}
-      </section>
-
-      <section className="mt-8 grid gap-4 sm:grid-cols-3">
+      <section className="mt-12 grid gap-4 sm:grid-cols-3">
         {[
           [Users, "Five roles", "Draft one starter at Top, Jungle, Mid, Bot, and Support."],
           [Braces, "Smart pricing", "Role-balanced prices turn performance into meaningful choices."],

@@ -1,7 +1,7 @@
 import type { ProRole } from "./types";
 
 export const PRICING_METHOD = "role-percentile-8m-12m";
-export const PRICING_VERSION = 1;
+export const PRICING_VERSION = 2;
 
 export interface PlayerPerformance {
   playerId: string;
@@ -24,8 +24,7 @@ export function projectedFantasyPpg(player: PlayerPerformance) {
     3 * player.avgKills -
     player.avgDeaths +
     1.5 * player.avgAssists +
-    0.01 * player.avgCs +
-    2 * player.winRate
+    0.01 * player.avgCs
   );
 }
 
@@ -54,4 +53,3 @@ export function pricePlayers(players: PlayerPerformance[]): PlayerPrice[] {
     };
   });
 }
-

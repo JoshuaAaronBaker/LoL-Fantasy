@@ -6,7 +6,6 @@ const rules: ScoringRule[] = [
   { metric: "assists", pointsPerUnit: 1.5, role: null },
   { metric: "deaths", pointsPerUnit: -1, role: null },
   { metric: "cs", pointsPerUnit: 0.01, role: null },
-  { metric: "win", pointsPerUnit: 2, role: null },
 ];
 
 describe("fantasy scoring", () => {
@@ -17,10 +16,20 @@ describe("fantasy scoring", () => {
     );
 
     expect(result).toEqual({
-      total: "43.37",
-      breakdown: { kills: "24.00", deaths: "-2.00", assists: "16.50", cs: "2.87", win: "2.00" },
+      total: "41.37",
+      breakdown: { kills: "24.00", deaths: "-2.00", assists: "16.50", cs: "2.87", win: "0.00" },
     });
-    expect(applyCaptainMultiplier(result.total, 1.5)).toBe("65.06");
+    expect(applyCaptainMultiplier(result.total, 1.5)).toBe("62.06");
+  });
+
+  it("does not award points for a win", () => {
+    const commonStats = { kills: 3, deaths: 1, assists: 4, cs: 200, role: "MID" as const };
+
+    const win = calculateFantasyScore({ ...commonStats, won: true }, rules);
+    const loss = calculateFantasyScore({ ...commonStats, won: false }, rules);
+
+    expect(win).toEqual(loss);
+    expect(win.breakdown.win).toBe("0.00");
   });
 
   it("prefers a matching role rule over the global rule", () => {

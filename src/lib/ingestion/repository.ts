@@ -48,7 +48,7 @@ async function upsertTeam(sql: Db, team: NormalizedTeam) {
   return rows[0].id;
 }
 
-async function activeRules(sql: Db, ruleSetKey = "default-v1") {
+async function activeRules(sql: Db, ruleSetKey = "default-v2") {
   const sets = await sql<Array<{ id: string; name: string; captain_multiplier: string }>>`
     select id, name, captain_multiplier::text
     from fantasy_scoring_rule_sets

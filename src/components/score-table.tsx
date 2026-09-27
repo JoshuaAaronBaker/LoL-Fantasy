@@ -49,8 +49,8 @@ export function ScoreTable({ rows }: { rows: GameScoreRow[] }) {
               </td>
               <td className="px-5 py-4 text-right">
                 <p className="font-mono text-lg font-black text-lime-300">{Number(row.baseScore).toFixed(2)}</p>
-                <p className="mt-1 text-[0.65rem] text-zinc-600" title="Kill + death + assist + CS + win breakdown">
-                  {points(row.breakdown.kills)} {points(row.breakdown.deaths)} {points(row.breakdown.assists)} {points(row.breakdown.cs)} {points(row.breakdown.win)}
+                <p className="mt-1 text-[0.65rem] text-zinc-600" title="Kill + death + assist + CS breakdown">
+                  {points(row.breakdown.kills)} {points(row.breakdown.deaths)} {points(row.breakdown.assists)} {points(row.breakdown.cs)}
                 </p>
               </td>
             </tr>

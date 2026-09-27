@@ -11,7 +11,7 @@ async function main() {
   try {
     const result = await recalculateScores(
       sql,
-      flags.optional("ruleset") ?? "default-v1",
+      flags.optional("ruleset") ?? "default-v2",
       flags.optional("game"),
     );
     console.info(JSON.stringify(result, null, 2));

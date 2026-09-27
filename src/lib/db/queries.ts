@@ -1,13 +1,6 @@
 import "server-only";
 import { getDatabase } from "./client";
 
-export interface LatestGame {
-  providerGameId: string;
-  tournamentName: string;
-  ingestedAt: string;
-  sourceKind: "fixture" | "live";
-}
-
 export interface GameScoreRow {
   playerName: string;
   teamName: string;
@@ -33,30 +26,6 @@ export interface GameScoreView {
   stageLabel: string | null;
   rulesetName: string;
   rows: GameScoreRow[];
-}
-
-export async function getLatestGame(): Promise<LatestGame | null> {
-  const sql = getDatabase();
-  const rows = await sql<
-    Array<{ provider_game_id: string; tournament_name: string; ingested_at: string; source_kind: "fixture" | "live" }>
-  >`
-    select g.provider_id as provider_game_id, t.name as tournament_name,
-           g.ingested_at::text, g.source_kind
-    from games g
-    join matches m on m.id = g.match_id
-    join tournaments t on t.id = m.tournament_id
-    order by g.ingested_at desc
-    limit 1
-  `;
-  const row = rows[0];
-  return row
-    ? {
-        providerGameId: row.provider_game_id,
-        tournamentName: row.tournament_name,
-        ingestedAt: row.ingested_at,
-        sourceKind: row.source_kind,
-      }
-    : null;
 }
 
 export async function getGameScoreView(providerGameId: string): Promise<GameScoreView | null> {

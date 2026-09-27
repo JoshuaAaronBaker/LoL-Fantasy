@@ -13,7 +13,14 @@ const performance = (playerId: string, avgKills: number): PlayerPerformance => (
 
 describe("stage pricing", () => {
   it("projects points using the active fantasy weights", () => {
-    expect(projectedFantasyPpg(performance("a", 4))).toBe(21);
+    expect(projectedFantasyPpg(performance("a", 4))).toBe(20);
+  });
+
+  it("does not use win rate in projected points", () => {
+    const lowWinRate = { ...performance("low", 4), winRate: 0.2 };
+    const highWinRate = { ...performance("high", 4), winRate: 0.8 };
+
+    expect(projectedFantasyPpg(lowWinRate)).toBe(projectedFantasyPpg(highWinRate));
   });
 
   it("maps role rank to rounded prices", () => {
@@ -32,4 +39,3 @@ describe("stage pricing", () => {
     expect(pricePlayers([performance("solo", 4)])[0].price).toBe(10_000_000);
   });
 });
-
