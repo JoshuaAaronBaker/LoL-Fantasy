@@ -84,10 +84,10 @@ export async function getStageLeaderboard(stageSlug: string, userId: string): Pr
       left join fantasy_roster_stage_scores score on score.roster_id = r.id
       where r.stage_id = ${stage.id}
     )
-    select rank::text, roster_id, user_id, username, total_score::text, base_score::text,
+    select rank, roster_id, user_id, username, total_score::text, base_score::text,
       captain_bonus::text, games_scored, submitted_at::text, calculated_at::text
     from ranked
-    order by rank, submitted_at, username
+    order by total_score desc, submitted_at, username
   `;
 
   const visibleRosterIds = rows

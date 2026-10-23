@@ -212,11 +212,11 @@ export async function getCompetitionHubWithDatabase(
           where s.tournament_id = ${competition.tournament_id}
           group by r.user_id, p.username
         )
-        select rank() over (order by total_score desc)::text as rank,
+        select rank() over (order by total_score desc) as rank,
           user_id, username, total_score::text, base_score::text, captain_bonus::text,
           games_scored, stages_entered
         from totals
-        order by rank, username
+        order by total_score desc, username
       `
     : [];
   const leaderRows = revealedStages.length > 0
@@ -241,7 +241,7 @@ export async function getCompetitionHubWithDatabase(
           left join fantasy_roster_stage_scores score on score.roster_id = r.id
           where r.stage_id in ${sql(revealedStages.map((stage) => stage.id))}
         )
-        select stage_id, rank::text, placement::text, roster_id, user_id, username,
+        select stage_id, rank, placement, roster_id, user_id, username,
           total_score::text, captain_bonus::text, games_scored
         from ranked where rank <= 3
         order by stage_id, placement
