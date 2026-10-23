@@ -23,6 +23,7 @@
     "jobs:work": "tsx scripts/work-operator-jobs.ts",
     "jobs:schedule": "tsx scripts/schedule-operator-jobs.ts",
     "stage:bootstrap": "tsx scripts/bootstrap-stage.ts",
+    "stage:open-next-round": "tsx scripts/open-next-round.ts",
     "stage:set-lock": "tsx scripts/set-stage-lock.ts",
     "stage:assign-matches": "tsx scripts/assign-stage-matches.ts",
     "stage:sync": "tsx scripts/sync-stage.ts",

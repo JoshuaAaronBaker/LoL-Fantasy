@@ -79,7 +79,7 @@ export default async function WorldsPage() {
               <div className="rounded-xl border border-white/8 bg-black/20 p-4"><p className="text-[10px] font-black uppercase tracking-wider text-zinc-600">Overall rank</p><p className="mt-2 font-mono text-3xl font-black text-lime-300">{userStanding ? `#${userStanding.rank}` : "—"}</p></div>
               <div className="rounded-xl border border-white/8 bg-black/20 p-4"><p className="text-[10px] font-black uppercase tracking-wider text-zinc-600">Total points</p><p className="mt-2 font-mono text-3xl font-black text-white">{userStanding?.totalScore.toFixed(2) ?? "0.00"}</p></div>
             </div>
-            <p className="mt-4 flex items-center gap-2 text-xs text-zinc-500"><ShieldCheck className="size-3.5 text-cyan-300" />Redraft each round. Scores carry forward.</p>
+            <p className="mt-4 flex items-center gap-2 text-xs text-zinc-500"><ShieldCheck className="size-3.5 text-cyan-300" />Redraft each Swiss round. Scores carry forward.</p>
           </Card>
         </div>
       </section>
@@ -162,7 +162,7 @@ export default async function WorldsPage() {
 
         {competition.remainingTeams.length > 0 && (
           <section>
-            <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-300">Still standing</p><h2 className="mt-2 text-3xl font-black tracking-tight text-white">Eligible teams</h2><p className="mt-2 text-sm text-zinc-500">This field is frozen for {current?.name}. Eliminated teams disappear from the next roster window.</p></div>
+            <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-300">Round field</p><h2 className="mt-2 text-3xl font-black tracking-tight text-white">Eligible teams</h2><p className="mt-2 text-sm text-zinc-500">This field is frozen for {current?.name}. Teams that advance or are eliminated sit out the next roster window.</p></div>
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {competition.remainingTeams.map((team) => <Card key={team.id} className="flex items-center gap-3 p-4"><div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/8 bg-black/20 text-[10px] font-black text-zinc-600">{team.imageUrl ? <img src={team.imageUrl} alt="" className="h-full w-full object-contain p-1" /> : (team.abbreviation ?? team.name.slice(0, 2)).toUpperCase()}</div><div className="min-w-0"><p className="truncate text-sm font-black text-white">{team.name}</p><p className="mt-0.5 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-lime-300"><Check className="size-3" />Eligible</p></div></Card>)}
             </div>
@@ -187,7 +187,7 @@ export default async function WorldsPage() {
         </section>
 
         <section className="grid gap-4 sm:grid-cols-3">
-          {[[Users, "Redraft each round", "Build from the teams still alive when each roster window opens."], [CircleDot, "Immutable pools", "Once a round opens, eligibility and prices stay frozen for everyone."], [Trophy, "One champion", "All stage totals roll into the same global Worlds leaderboard."]].map(([Icon, title, copy]) => {
+          {[[Users, "Redraft each round", "Build from the teams scheduled to play when each Swiss roster window opens."], [CircleDot, "Immutable pools", "Once a round opens, eligibility and prices stay frozen for everyone."], [Trophy, "One champion", "All stage totals roll into the same global Worlds leaderboard."]].map(([Icon, title, copy]) => {
             const Component = Icon as typeof Users;
             return <Card key={String(title)} className="p-5"><Component className="size-5 text-zinc-500" /><h3 className="mt-4 font-bold text-zinc-100">{String(title)}</h3><p className="mt-2 text-sm leading-6 text-zinc-500">{String(copy)}</p></Card>;
           })}

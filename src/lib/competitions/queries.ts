@@ -156,7 +156,11 @@ export async function getCompetitionHubWithDatabase(
     slug: stage.slug,
     name: stage.name,
     sequence: stage.sequence,
-    status: stage.status,
+    status: stage.status === "OPEN"
+      && stage.roster_lock_time !== null
+      && new Date(competition.database_now).valueOf() >= new Date(stage.roster_lock_time).valueOf()
+      ? "LOCKED"
+      : stage.status,
     lockAt: stage.roster_lock_time,
     eligiblePlayers: stage.eligible_players,
     eligibleTeams: stage.eligible_teams,

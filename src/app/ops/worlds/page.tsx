@@ -22,6 +22,7 @@ import {
   configureWorldsStageSyncAction,
   discoverWorldsTournamentsAction,
   enqueueWorldsStageBootstrapAction,
+  openWorldsRoundFromStageAction,
   refreshWorldsTeamsAction,
   toggleWorldsStageSyncAction,
 } from "./actions";
@@ -129,7 +130,7 @@ export default async function WorldsOperationsPage({ searchParams }: {
 
       <section className="mt-10">
         <Card className="overflow-hidden p-0">
-          <div className="flex items-start gap-3 border-b border-white/8 p-5"><TerminalSquare className="mt-0.5 size-5 text-amber-200" /><div><h2 className="font-black text-white">Queue the next roster window</h2><p className="mt-1 text-sm text-zinc-500">Choose the surviving teams and a future lock. The durable worker builds, validates, prices, and atomically opens the stage.</p></div></div>
+          <div className="flex items-start gap-3 border-b border-white/8 p-5"><TerminalSquare className="mt-0.5 size-5 text-amber-200" /><div><h2 className="font-black text-white">Open the next redraft round</h2><p className="mt-1 text-sm text-zinc-500">Choose the teams playing this round and a future lock. Clone the verified prior catalog without provider calls, or request a fresh provider rebuild.</p></div></div>
           {view.tournamentProviderId && view.teams.length > 0 ? (
             <form action={enqueueWorldsStageBootstrapAction} className="space-y-5 p-5">
               <div className="grid gap-4 sm:grid-cols-3">
@@ -137,8 +138,9 @@ export default async function WorldsOperationsPage({ searchParams }: {
                 <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Stage name<input required name="stageName" placeholder="Worlds Swiss Stage" minLength={3} maxLength={80} className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40" /></label>
                 <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Lock time (ISO)<input required name="lockAt" placeholder="2026-10-20T00:00:00Z" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-xs font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40" /></label>
               </div>
-              <fieldset><legend className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Eligible surviving teams</legend><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{view.teams.map((team) => <label key={team.id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/8 bg-black/15 p-3 text-sm font-bold text-zinc-300 hover:border-white/15"><input type="checkbox" name="teamId" value={team.providerId} defaultChecked className="size-4 accent-lime-300" /><span className="truncate">{team.name}</span></label>)}</div></fieldset>
-              <div className="flex flex-col gap-3 border-t border-white/8 pt-5 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-zinc-600">The request is deduplicated by tournament and stage slug.</p><button className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-200 px-5 py-3 text-xs font-black uppercase tracking-wider text-zinc-950 hover:bg-amber-100"><ListChecks className="size-3.5" />Queue stage job</button></div>
+              <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Verified source catalog<select required name="sourceStageId" defaultValue={view.stages.filter((stage) => stage.eligiblePlayers > 0).at(-1)?.id ?? ""} className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40"><option value="" disabled>Choose a prior round</option>{view.stages.filter((stage) => stage.eligiblePlayers > 0).map((stage) => <option key={stage.id} value={stage.id}>{stage.name} · {stage.eligiblePlayers} players</option>)}</select></label>
+              <fieldset><legend className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Teams playing this round</legend><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{view.teams.map((team) => <label key={team.id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/8 bg-black/15 p-3 text-sm font-bold text-zinc-300 hover:border-white/15"><input type="checkbox" name="teamId" value={team.providerId} defaultChecked className="size-4 accent-lime-300" /><span className="truncate">{team.name}</span></label>)}</div></fieldset>
+              <div className="flex flex-col gap-3 border-t border-white/8 pt-5 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-zinc-600">Cloned rounds re-rank prices within each role for the selected field.</p><div className="flex flex-col gap-2 sm:flex-row"><button formAction={enqueueWorldsStageBootstrapAction} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-white/5"><RefreshCw className="size-3.5" />Provider rebuild</button><button formAction={openWorldsRoundFromStageAction} className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-200 px-5 py-3 text-xs font-black uppercase tracking-wider text-zinc-950 hover:bg-amber-100"><ListChecks className="size-3.5" />Open redraft round</button></div></div>
             </form>
           ) : <p className="p-5 text-sm text-zinc-600">The form unlocks after a tournament is connected and its teams are published.</p>}
         </Card>

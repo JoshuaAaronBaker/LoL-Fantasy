@@ -18,6 +18,7 @@ import { enqueueStageBootstrapJob, stageBootstrapJobPayloadSchema } from "@/lib/
 import { getOperatorWorldsView } from "@/lib/operators/queries";
 import { setStageSyncScheduleEnabled, upsertStageSyncSchedule } from "@/lib/operators/schedules";
 import { CitoEsportsDataProvider } from "@/lib/providers/cito/client";
+import { openNextRoundFromStage } from "@/lib/stages/rollover";
 
 const candidateIdSchema = z.uuid();
 const stageIdSchema = z.uuid();
@@ -122,6 +123,39 @@ export async function enqueueWorldsStageBootstrapAction(formData: FormData) {
       : `${payload.stageName} already has a ${job.status.toLowerCase()} job.`;
   } catch {
     finish("Stage request was rejected. Check its name, slug, future lock, and selected teams.", true);
+  }
+  finish(message);
+}
+
+export async function openWorldsRoundFromStageAction(formData: FormData) {
+  await requireOperator();
+  let message: string;
+  try {
+    const view = await getOperatorWorldsView();
+    if (!view?.tournamentId) throw new Error("No Worlds tournament is connected.");
+    const sourceStageId = stageIdSchema.parse(formData.get("sourceStageId"));
+    const sourceStage = view.stages.find((stage) => stage.id === sourceStageId);
+    if (!sourceStage || sourceStage.eligiblePlayers === 0) {
+      throw new Error("Choose a source stage with a verified player catalog.");
+    }
+    const requestedTeamIds = [...new Set(formData.getAll("teamId").map(String))];
+    const knownTeamIds = new Set(view.teams.map((team) => team.providerId));
+    if (requestedTeamIds.length === 0 || requestedTeamIds.some((teamId) => !knownTeamIds.has(teamId))) {
+      throw new Error("Choose valid teams playing the next round.");
+    }
+    const stageSlug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).parse(formData.get("stageSlug"));
+    const stageName = z.string().trim().min(3).max(80).parse(formData.get("stageName"));
+    const lockAt = z.iso.datetime().parse(formData.get("lockAt"));
+    const result = await openNextRoundFromStage(getDatabase(), {
+      sourceStageId,
+      slug: stageSlug,
+      name: stageName,
+      lockAt,
+      eligibleTeamProviderIds: requestedTeamIds,
+    });
+    message = `Opened ${stageName} with ${result.players} players from ${result.teams} teams.`;
+  } catch {
+    finish("The redraft round could not be opened. Check the source, future lock, and teams playing this round.", true);
   }
   finish(message);
 }

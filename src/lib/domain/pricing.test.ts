@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { pricePlayers, projectedFantasyPpg, type PlayerPerformance } from "./pricing";
+import {
+  pricePlayers,
+  priceProjectedPlayers,
+  projectedFantasyPpg,
+  type PlayerPerformance,
+} from "./pricing";
 
 const performance = (playerId: string, avgKills: number): PlayerPerformance => ({
   playerId,
@@ -49,5 +54,17 @@ describe("stage pricing", () => {
     expect(tied[0].price).toBe(11_000_000);
     expect(tied[1].price).toBe(11_000_000);
     expect(pricePlayers([performance("solo", 4)])[0].price).toBe(10_000_000);
+  });
+
+  it("re-ranks stored projections for a reduced round field", () => {
+    const result = priceProjectedPlayers([
+      { playerId: "first", role: "TOP", projectedPpg: 20 },
+      { playerId: "second", role: "TOP", projectedPpg: 15 },
+    ]);
+
+    expect(result.map(({ playerId, price }) => [playerId, price])).toEqual([
+      ["first", 12_000_000],
+      ["second", 8_000_000],
+    ]);
   });
 });

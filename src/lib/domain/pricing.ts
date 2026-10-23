@@ -20,6 +20,12 @@ export interface PlayerPrice extends PlayerPerformance {
   price: number;
 }
 
+export interface ProjectedPlayer {
+  playerId: string;
+  role: ProRole;
+  projectedPpg: number;
+}
+
 export function projectedFantasyPpg(player: PlayerPerformance) {
   if (player.role === "SUPPORT") {
     return (
@@ -43,8 +49,7 @@ function roundToHalfMillion(value: number) {
   return Math.round(value / 500_000) * 500_000;
 }
 
-export function pricePlayers(players: PlayerPerformance[]): PlayerPrice[] {
-  const projected = players.map((player) => ({ ...player, projectedPpg: projectedFantasyPpg(player) }));
+export function priceProjectedPlayers<T extends ProjectedPlayer>(projected: T[]) {
   return projected.map((player) => {
     const rolePlayers = projected
       .filter((candidate) => candidate.role === player.role)
@@ -63,4 +68,11 @@ export function pricePlayers(players: PlayerPerformance[]): PlayerPrice[] {
       price: roundToHalfMillion(8_000_000 + rolePercentile * 4_000_000),
     };
   });
+}
+
+export function pricePlayers(players: PlayerPerformance[]): PlayerPrice[] {
+  return priceProjectedPlayers(players.map((player) => ({
+    ...player,
+    projectedPpg: projectedFantasyPpg(player),
+  })));
 }
