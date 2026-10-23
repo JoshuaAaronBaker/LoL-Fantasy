@@ -103,11 +103,20 @@ export async function claimOperatorJob(
     lease_expires_at: string | null;
   }>>`
     with candidate as (
-      select id from operator_jobs
-      where attempts < max_attempts
-        and job_type in ${sql(jobTypes)}
-        and (status = 'QUEUED' or (status = 'RUNNING' and lease_expires_at < clock_timestamp()))
-      order by created_at
+      select job.id from operator_jobs job
+      where job.attempts < job.max_attempts
+        and job.job_type in ${sql(jobTypes)}
+        and (job.status = 'QUEUED' or (job.status = 'RUNNING' and job.lease_expires_at < clock_timestamp()))
+      order by
+        case
+          when job.job_type = 'STAGE_SYNC' and exists (
+            select 1 from tournament_stages stage
+            where stage.id::text = job.payload ->> 'stageId' and stage.status = 'LIVE'
+          ) then 0
+          when job.job_type = 'STAGE_SYNC' then 1
+          else 2
+        end,
+        job.created_at
       for update skip locked
       limit 1
     )

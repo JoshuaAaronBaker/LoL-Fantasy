@@ -75,7 +75,9 @@ export async function enqueueDueStageSyncJobs(sql: Sql, limit = 10) {
           where job.job_type = 'STAGE_SYNC' and job.status in ('QUEUED', 'RUNNING')
             and job.payload ->> 'scheduleId' = schedule.id::text
         )
-      order by schedule.next_run_at
+      order by
+        case stage.status when 'LIVE' then 0 when 'LOCKED' then 1 when 'OPEN' then 2 else 3 end,
+        schedule.next_run_at
       for update of schedule skip locked
       limit ${limit}
     `;
