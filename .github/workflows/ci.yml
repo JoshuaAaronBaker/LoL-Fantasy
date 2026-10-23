@@ -49,6 +49,7 @@ jobs:
         run: echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(npx supabase status -o env | sed -n 's/^ANON_KEY=\"\(.*\)\"$/\1/p')" >> "$GITHUB_ENV"
       - run: npm test
       - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e:seed
       - run: npm run test:e2e
       - name: Stop local Supabase
         if: always()
