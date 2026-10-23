@@ -49,6 +49,70 @@ async function upsertTeam(sql: Db, team: NormalizedTeam) {
   return rows[0].id;
 }
 
+type IngestedPlayerStat = IngestionBundle["games"][number]["stats"][number];
+
+async function upsertPlayer(sql: Db, stat: IngestedPlayerStat, teamId: string) {
+  const existing = await sql<Array<{ id: string }>>`
+    select id
+    from pro_players
+    where provider = ${stat.player.provider} and provider_id = ${stat.player.providerId}
+    limit 1
+  `;
+
+  if (existing[0]) {
+    await sql`
+      update pro_players set
+        display_name = ${stat.player.displayName},
+        current_team_id = ${teamId},
+        role = coalesce(${stat.player.role}, role),
+        raw_payload = ${json(stat.player.raw)}::jsonb,
+        updated_at = now()
+      where id = ${existing[0].id}
+    `;
+    return existing[0].id;
+  }
+
+  // Emergency roster corrections can be created before Cito exposes a stable
+  // player ID. Adopt the real ID on first game ingestion so the drafted player
+  // and their live scores remain the same database record.
+  const corrected = await sql<Array<{ id: string }>>`
+    select id
+    from pro_players
+    where provider = ${stat.player.provider}
+      and provider_id like 'manual-worlds-2026-%'
+      and current_team_id = ${teamId}
+      and lower(display_name) = lower(${stat.player.displayName})
+      and (role is null or role = ${stat.role})
+    limit 1
+    for update
+  `;
+
+  if (corrected[0]) {
+    await sql`
+      update pro_players set
+        provider_id = ${stat.player.providerId},
+        display_name = ${stat.player.displayName},
+        current_team_id = ${teamId},
+        role = coalesce(${stat.player.role}, role),
+        raw_payload = ${json(stat.player.raw)}::jsonb,
+        updated_at = now()
+      where id = ${corrected[0].id}
+    `;
+    return corrected[0].id;
+  }
+
+  const rows = await sql<Array<{ id: string }>>`
+    insert into pro_players (
+      provider, provider_id, display_name, current_team_id, role, raw_payload
+    ) values (
+      ${stat.player.provider}, ${stat.player.providerId}, ${stat.player.displayName},
+      ${teamId}, ${stat.player.role}, ${json(stat.player.raw)}::jsonb
+    )
+    returning id
+  `;
+  return rows[0].id;
+}
+
 async function activeRules(sql: Db, ruleSetKey = "default-v3") {
   const sets = await sql<Array<{ id: string; name: string; captain_multiplier: string }>>`
     select id, name, captain_multiplier::text
@@ -189,21 +253,7 @@ export async function persistIngestionBundle(
           }
           const teamId = teamIds.get(stat.team.providerId);
           if (!teamId) throw new Error(`Normalized team ${stat.team.providerId} was not persisted.`);
-          const playerRows = await tx<Array<{ id: string }>>`
-            insert into pro_players (
-              provider, provider_id, display_name, current_team_id, role, raw_payload
-            ) values (
-              ${stat.player.provider}, ${stat.player.providerId}, ${stat.player.displayName},
-              ${teamId}, ${stat.player.role}, ${json(stat.player.raw)}::jsonb
-            )
-            on conflict (provider, provider_id) do update set
-              display_name = excluded.display_name,
-              current_team_id = excluded.current_team_id,
-              role = coalesce(excluded.role, pro_players.role),
-              raw_payload = excluded.raw_payload
-            returning id
-          `;
-          const playerId = playerRows[0].id;
+          const playerId = await upsertPlayer(tx, stat, teamId);
           currentPlayerIds.push(playerId);
           const statRows = await tx<Array<{ id: string }>>`
             insert into player_game_stats (
