@@ -1,0 +1,51 @@
+name: Live fantasy watch
+
+on:
+  workflow_dispatch:
+    inputs:
+      watch_minutes:
+        description: How long to keep polling the live scoring queue
+        required: true
+        default: "300"
+        type: choice
+        options:
+          - "60"
+          - "180"
+          - "300"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-fantasy-watch
+  cancel-in-progress: true
+
+jobs:
+  watch:
+    if: vars.LIVE_SYNC_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      DATABASE_URL: ${{ secrets.LIVE_DATABASE_URL }}
+      CITO_API_KEY: ${{ secrets.CITO_API_KEY }}
+      WATCH_MINUTES: ${{ inputs.watch_minutes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Poll live fantasy scoring
+        shell: bash
+        run: |
+          end_at=$((SECONDS + WATCH_MINUTES * 60))
+          while true; do
+            npm run jobs:schedule
+            npm run jobs:work
+
+            if (( SECONDS >= end_at )); then
+              break
+            fi
+            sleep 300
+          done
