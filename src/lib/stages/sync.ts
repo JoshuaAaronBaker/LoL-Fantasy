@@ -6,13 +6,22 @@ import { recalculateRosterScores } from "@/lib/leaderboard/repository";
 import {
   determineStageStatus,
   isCompletedGameStatus,
+  isLiveMatchStatus,
+  isScheduledMatchStatus,
+  isTerminalMatchStatus,
   type StageStatus,
 } from "./lifecycle";
+
+const MATCH_POLL_LEAD_MS = 90 * 60 * 1_000;
 
 interface StageRow {
   id: string;
   tournament_id: string;
   tournament_provider_id: string;
+  tournament_name: string;
+  tournament_start_time: string | null;
+  tournament_end_time: string | null;
+  tournament_raw_payload: unknown;
   name: string;
   status: StageStatus;
   roster_lock_time: string | null;
@@ -32,6 +41,8 @@ export interface StageSyncResult {
   previousStageStatus: StageStatus;
   stageStatus: StageStatus;
   matchesProcessed: number;
+  matchesSkipped: number;
+  matchesDeferred: number;
   matchesAssigned: number;
   gamesIngested: number;
   matchResults: Array<IngestionResult & { matchId: string }>;
@@ -52,6 +63,8 @@ function uniqueIds(values: string[]) {
 async function findStage(sql: Sql, slug: string) {
   const rows = await sql<StageRow[]>`
     select s.id, s.tournament_id, t.provider_id as tournament_provider_id,
+      t.name as tournament_name, t.start_time::text as tournament_start_time,
+      t.end_time::text as tournament_end_time, t.raw_payload as tournament_raw_payload,
       s.name, s.status, s.roster_lock_time::text
     from tournament_stages s
     join tournaments t on t.id = s.tournament_id
@@ -82,8 +95,9 @@ async function validateKnownMatches(
     tournament_id: string;
     stage_id: string | null;
     status: string;
+    start_time: string | null;
   }>>`
-    select provider_id, tournament_id, stage_id, status
+    select provider_id, tournament_id, stage_id, status, start_time::text
     from matches
     where provider = 'cito' and provider_id in ${sql(matchIds)}
   `;
@@ -93,7 +107,26 @@ async function validateKnownMatches(
   if (conflict) {
     throw new Error(`Match ${conflict.provider_id} already belongs to another tournament or fantasy stage.`);
   }
-  return new Map(rows.map((row) => [row.provider_id, { status: row.status, stageId: row.stage_id }]));
+  return new Map(rows.map((row) => [row.provider_id, {
+    status: row.status,
+    stageId: row.stage_id,
+    startTime: row.start_time,
+  }]));
+}
+
+export function shouldPollMatch(
+  match: { status: string; startTime: string | null } | undefined,
+  databaseNow: string,
+  refreshCompleted = false,
+) {
+  if (refreshCompleted || !match) return true;
+  if (isTerminalMatchStatus(match.status)) return false;
+  if (isLiveMatchStatus(match.status) || !match.startTime) return true;
+  return new Date(match.startTime).valueOf() <= new Date(databaseNow).valueOf() + MATCH_POLL_LEAD_MS;
+}
+
+export function shouldFetchMatchGames(status: string) {
+  return !isScheduledMatchStatus(status);
 }
 
 async function knownGameIds(sql: Sql, matchId: string) {
@@ -129,17 +162,35 @@ export async function synchronizeStage(
   const runId = runRows[0].id;
 
   try {
-    // Fetch once per stage, then keep every provider request sequential for low-volume plans.
-    const tournament = await provider.getTournament(stage.tournament_provider_id);
-    if (tournament.providerId !== stage.tournament_provider_id) {
-      throw new Error(`Provider returned tournament ${tournament.providerId} for ${stage.tournament_provider_id}.`);
-    }
+    const nowRows = await sql<Array<{ database_now: string }>>`
+      select clock_timestamp()::text as database_now
+    `;
+    const databaseNow = nowRows[0].database_now;
+    const selectedIds = requestedIds.filter((matchId) => shouldPollMatch(
+      knownStatuses.get(matchId),
+      databaseNow,
+      input.refreshCompleted,
+    ));
+    const matchesDeferred = requestedIds.filter((matchId) => {
+      const match = knownStatuses.get(matchId);
+      return match
+        && !isTerminalMatchStatus(match.status)
+        && !shouldPollMatch(match, databaseNow, input.refreshCompleted);
+    }).length;
+    const tournament = {
+      provider: "cito" as const,
+      providerId: stage.tournament_provider_id,
+      name: stage.tournament_name,
+      startTime: stage.tournament_start_time,
+      endTime: stage.tournament_end_time,
+      raw: stage.tournament_raw_payload,
+    };
 
     const matchResults: StageSyncResult["matchResults"] = [];
     let matchesAssigned = 0;
     let metadataChanged = false;
 
-    for (const matchId of requestedIds) {
+    for (const matchId of selectedIds) {
       const match = await provider.getMatch(matchId, stage.tournament_provider_id);
       if (match.providerId !== matchId) throw new Error(`Provider returned match ${match.providerId} for ${matchId}.`);
       if (match.tournamentProviderId !== stage.tournament_provider_id) {
@@ -147,7 +198,9 @@ export async function synchronizeStage(
       }
       if (knownStatuses.get(matchId)?.status !== match.status) metadataChanged = true;
 
-      const listedGames = await provider.getMatchGames(matchId);
+      const listedGames = shouldFetchMatchGames(match.status)
+        ? await provider.getMatchGames(matchId)
+        : [];
       const existingGames = input.refreshCompleted ? new Set<string>() : await knownGameIds(sql, matchId);
       const selectedGames = listedGames.filter((game) =>
         isCompletedGameStatus(game.status) && !existingGames.has(game.providerId),
@@ -231,6 +284,8 @@ export async function synchronizeStage(
       previousStageStatus: finalized.previousStatus,
       stageStatus: finalized.nextStatus,
       matchesProcessed: matchResults.length,
+      matchesSkipped: requestedIds.length - selectedIds.length,
+      matchesDeferred,
       matchesAssigned,
       gamesIngested,
       matchResults,

@@ -39,6 +39,16 @@ describe("Cito client", () => {
     expect(fetchImpl).toHaveBeenCalledOnce();
   });
 
+  it("does not retry a rate limit that cannot clear during the worker run", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response("monthly limit reached", { status: 429, headers: { "retry-after": "3600" } }),
+    );
+    const provider = new CitoEsportsDataProvider({ apiKey: "key", fetchImpl, maxRetries: 3 });
+
+    await expect(provider.getTournament("worlds-2026")).rejects.toEqual(expect.any(CitoApiError));
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
   it("loads a bounded tournament catalog page", async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
       tournaments: [{ tournamentId: "lol-worlds_2026", name: "Worlds 2026", league: { slug: "worlds" } }],

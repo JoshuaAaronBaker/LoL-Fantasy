@@ -26,6 +26,14 @@ const LIVE_MATCH_STATUSES = new Set([
   "STARTED",
 ]);
 
+const SCHEDULED_MATCH_STATUSES = new Set([
+  "NOT_STARTED",
+  "PENDING",
+  "SCHEDULED",
+  "UNSTARTED",
+  "UPCOMING",
+]);
+
 const COMPLETED_GAME_STATUSES = new Set(["COMPLETE", "COMPLETED", "FINISHED", "FINAL"]);
 
 export function isTerminalMatchStatus(status: string) {
@@ -34,6 +42,10 @@ export function isTerminalMatchStatus(status: string) {
 
 export function isLiveMatchStatus(status: string) {
   return LIVE_MATCH_STATUSES.has(canonicalProviderStatus(status));
+}
+
+export function isScheduledMatchStatus(status: string) {
+  return SCHEDULED_MATCH_STATUSES.has(canonicalProviderStatus(status));
 }
 
 export function isCompletedGameStatus(status: string) {

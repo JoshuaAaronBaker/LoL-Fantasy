@@ -25,15 +25,16 @@ const game: NormalizedGame = {
 };
 
 function testProvider() {
+  const getTournament = vi.fn(async () => ({
+    provider: "cito" as const, providerId: tournamentProviderId, name: "Stage Sync Integration",
+    startTime: null, endTime: null, raw: {},
+  }));
   const getGame = vi.fn(async () => game);
   const getGamePlayerStats = vi.fn(async () => ({ stats: [], raw: {} }));
   const provider: EsportsDataProvider = {
     name: "cito",
     getTournaments: async () => [],
-    getTournament: async () => ({
-      provider: "cito", providerId: tournamentProviderId, name: "Stage Sync Integration",
-      startTime: null, endTime: null, raw: {},
-    }),
+    getTournament,
     getTournamentTeams: async () => [],
     getTeamRoster: async () => { throw new Error("not used"); },
     getPlayerAggregateStats: async () => { throw new Error("not used"); },
@@ -45,7 +46,7 @@ function testProvider() {
     getGame,
     getGamePlayerStats,
   };
-  return { provider, getGame, getGamePlayerStats };
+  return { provider, getTournament, getGame, getGamePlayerStats };
 }
 
 suite("stage synchronization", () => {
@@ -69,7 +70,7 @@ suite("stage synchronization", () => {
   });
 
   it("assigns, ingests, scores, completes, and then converges on replay", async () => {
-    const { provider, getGame, getGamePlayerStats } = testProvider();
+    const { provider, getTournament, getGame, getGamePlayerStats } = testProvider();
     const first = await synchronizeStage(sql!, provider, {
       stageSlug,
       matchIds: [matchProviderId],
@@ -88,12 +89,14 @@ suite("stage synchronization", () => {
       status: "UNCHANGED",
       previousStageStatus: "COMPLETE",
       stageStatus: "COMPLETE",
-      matchesProcessed: 1,
+      matchesProcessed: 0,
+      matchesSkipped: 1,
       matchesAssigned: 0,
       gamesIngested: 0,
     });
     expect(getGame).toHaveBeenCalledTimes(1);
     expect(getGamePlayerStats).toHaveBeenCalledTimes(1);
+    expect(getTournament).not.toHaveBeenCalled();
 
     const rows = await sql!<Array<{ stage_status: string; games: number; succeeded: number; unchanged: number }>>`
       select s.status as stage_status,
@@ -107,8 +110,11 @@ suite("stage synchronization", () => {
 
   it("records a failed operator run without changing stage data", async () => {
     const { provider } = testProvider();
-    provider.getTournament = async () => { throw new Error("provider unavailable"); };
-    await expect(synchronizeStage(sql!, provider, { stageSlug })).rejects.toThrow("provider unavailable");
+    provider.getMatch = async () => { throw new Error("provider unavailable"); };
+    await expect(synchronizeStage(sql!, provider, {
+      stageSlug,
+      refreshCompleted: true,
+    })).rejects.toThrow("provider unavailable");
     const rows = await sql!<Array<{ status: string; error_message: string }>>`
       select status, error_message from stage_sync_runs
       where stage_id = (select id from tournament_stages where slug = ${stageSlug})

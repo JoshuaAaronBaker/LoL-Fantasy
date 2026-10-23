@@ -32,12 +32,20 @@ export interface CitoClientOptions {
   minRequestIntervalMs?: number;
 }
 
-function retryDelay(response: Response | null, attempt: number) {
+function retryAfterMs(response: Response | null) {
   const header = response?.headers.get("retry-after");
   if (header) {
     const seconds = Number(header);
-    if (Number.isFinite(seconds)) return Math.min(seconds * 1_000, 60_000);
+    if (Number.isFinite(seconds)) return Math.max(0, seconds * 1_000);
+    const date = new Date(header).valueOf();
+    if (Number.isFinite(date)) return Math.max(0, date - Date.now());
   }
+  return null;
+}
+
+function retryDelay(response: Response | null, attempt: number) {
+  const requestedDelay = retryAfterMs(response);
+  if (requestedDelay !== null) return Math.min(requestedDelay, 60_000);
   return Math.min(250 * 2 ** attempt + Math.floor(Math.random() * 100), 2_500);
 }
 
@@ -77,7 +85,9 @@ export class CitoEsportsDataProvider implements EsportsDataProvider {
         });
         if (response.ok) return await response.json();
 
-        const retryable = response.status === 429 || response.status >= 500;
+        const requestedDelay = retryAfterMs(response);
+        const retryable = response.status >= 500
+          || (response.status === 429 && (requestedDelay === null || requestedDelay <= 60_000));
         if (!retryable || attempt === this.maxRetries) {
           const body = await response.text().catch(() => "");
           throw new CitoApiError(
