@@ -66,7 +66,7 @@ suite("ingestion repository", () => {
     await expect(recalculateScores(sql!, "default-v3", "sample-game-1")).resolves.toMatchObject({ count: 10 });
   });
 
-  it("rejects finalized live support stats without vision score", async () => {
+  it("rejects finalized live support stats without a provider or fallback vision metric", async () => {
     const provider = await FixtureEsportsDataProvider.fromFile(
       resolve(process.cwd(), "fixtures/cito/completed-match.json"),
     );

@@ -11,6 +11,7 @@ import {
   normalizeTeamRoster,
   normalizePlayerAggregateStats,
 } from "./normalize";
+import { getRiotFinalStats, mergeRiotFinalStats } from "../riot-live-stats";
 
 const BASE_URL = "https://api.citoapi.com/api/v1";
 
@@ -146,6 +147,15 @@ export class CitoEsportsDataProvider implements EsportsDataProvider {
 
   async getGamePlayerStats(game: NormalizedGame): Promise<PlayerStatsResult> {
     const raw = await this.get(`/lol/games/${encodeURIComponent(game.providerId)}/stats`);
-    return { stats: normalizePlayerStats(raw, game), raw };
+    let stats = normalizePlayerStats(raw, game);
+    const needsFinalEnrichment = game.status === "COMPLETED" && (
+      stats.some((stat) => stat.cs === 0)
+      || stats.some((stat) => stat.role === "SUPPORT" && stat.visionScore === null)
+    );
+    if (!needsFinalEnrichment) return { stats, raw };
+
+    const riot = await getRiotFinalStats(this.fetchImpl, game, this.timeoutMs);
+    stats = mergeRiotFinalStats(stats, riot);
+    return { stats, raw: { cito: raw, riotLiveStats: riot } };
   }
 }
