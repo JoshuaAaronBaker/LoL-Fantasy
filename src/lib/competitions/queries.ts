@@ -216,7 +216,7 @@ export async function getCompetitionHubWithDatabase(
           user_id, username, total_score::text, base_score::text, captain_bonus::text,
           games_scored, stages_entered
         from totals
-        order by total_score desc, username
+        order by rank, username
       `
     : [];
   const leaderRows = revealedStages.length > 0

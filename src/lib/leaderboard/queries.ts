@@ -87,7 +87,7 @@ export async function getStageLeaderboard(stageSlug: string, userId: string): Pr
     select rank, roster_id, user_id, username, total_score::text, base_score::text,
       captain_bonus::text, games_scored, submitted_at::text, calculated_at::text
     from ranked
-    order by total_score desc, submitted_at, username
+    order by rank, submitted_at, username
   `;
 
   const visibleRosterIds = rows
