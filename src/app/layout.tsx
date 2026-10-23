@@ -9,7 +9,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "LoL Fantasy",
-  description: "Build World Championship fantasy rosters and compete on one global leaderboard.",
+  description: "Build World Championship fantasy rosters and climb the leaderboard.",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

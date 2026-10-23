@@ -66,7 +66,7 @@ export async function connectWorldsTournamentAction(formData: FormData) {
     await configureCompetition(sql, {
       slug: "worlds",
       name: "World Championship Fantasy",
-      description: "Redraft through every World Championship roster window and climb one global leaderboard.",
+      description: "Redraft through every World Championship roster window and climb the leaderboard.",
       tournament,
     });
     message = `Connected ${tournament.name}.`;

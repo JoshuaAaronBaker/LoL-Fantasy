@@ -143,7 +143,7 @@ npm run competition:configure -- \
   --competition worlds \
   --tournament <worlds-tournament-id> \
   --name "World Championship Fantasy" \
-  --description "Redraft every round and climb one global leaderboard."
+  --description "Redraft every round and climb the leaderboard."
 ```
 
 Then bootstrap one immutable stage per roster window with `--teams`. Stage scores automatically roll

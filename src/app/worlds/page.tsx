@@ -62,7 +62,7 @@ export default async function WorldsPage() {
           <div>
             <Badge className="border-amber-300/25 bg-amber-300/8 text-amber-200"><Globe2 className="mr-1.5 size-3" />World Championship Fantasy</Badge>
             <h1 className="mt-6 max-w-4xl text-5xl font-black leading-[0.9] tracking-[-0.055em] text-white sm:text-7xl">
-              One world.<br /><span className="text-lime-300">One leaderboard.</span>
+              Welcome to <span className="text-lime-300">Worlds 2026</span>
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-zinc-400 sm:text-lg">{competition.description}</p>
             {currentHref && currentAction && (

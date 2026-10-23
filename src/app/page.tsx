@@ -9,11 +9,10 @@ export default function Home() {
       <div className="max-w-3xl">
         <Badge className="border-lime-300/20 bg-lime-300/8 text-lime-300"><Globe2 className="mr-1.5 size-3" />World Championship Fantasy</Badge>
         <h1 className="mt-6 text-4xl font-black leading-[0.98] tracking-[-0.04em] text-white sm:text-6xl">
-          Draft the five.
-          <br />Own every fight.
+          Draft your five.
         </h1>
         <p className="mt-6 max-w-2xl text-base leading-7 text-zinc-400 sm:text-lg">
-          Redraft a role-complete roster through every World Championship stage. Stay under the cap, follow the surviving teams, and climb one global leaderboard.
+          Redraft a role-complete roster through every World Championship stage. Stay under the cap, follow the surviving teams, and climb the leaderboard.
         </p>
         <Link href="/worlds" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-lime-300 px-5 py-3 text-sm font-black text-zinc-950 transition hover:bg-lime-200">Enter Worlds <ArrowRight className="size-4" /></Link>
       </div>
