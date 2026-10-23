@@ -4,7 +4,7 @@ import { normalizeUsername, usernameSchema, usernameToInternalEmail } from "./cr
 describe("username credentials", () => {
   it("normalizes usernames for identity comparisons", () => {
     expect(normalizeUsername("  Faker_1 ")).toBe("faker_1");
-    expect(usernameToInternalEmail("Faker_1")).toBe("faker_1@users.lolfantasy.invalid");
+    expect(usernameToInternalEmail("Faker_1")).toBe("faker_1@lo-l-fantasy.vercel.app");
   });
 
   it("accepts only the documented username format", () => {
@@ -13,4 +13,3 @@ describe("username credentials", () => {
     expect(usernameSchema.safeParse("ab").success).toBe(false);
   });
 });
-

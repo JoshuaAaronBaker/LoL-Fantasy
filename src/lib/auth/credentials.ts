@@ -14,6 +14,8 @@ export function normalizeUsername(username: string) {
 }
 
 export function usernameToInternalEmail(username: string) {
-  return `${normalizeUsername(username)}@users.lolfantasy.invalid`;
+  // Supabase hosted Auth rejects reserved test domains such as `.invalid`.
+  // This address is only an internal credential identifier; the application
+  // never displays it or sends mail because email confirmation is disabled.
+  return `${normalizeUsername(username)}@lo-l-fantasy.vercel.app`;
 }
-
