@@ -12,7 +12,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
         <span className="grid size-11 place-items-center rounded-xl border border-lime-300/20 bg-lime-300/10 text-lime-300"><UserPlus className="size-5" /></span>
         <h1 className="mt-6 text-3xl font-black tracking-tight text-white">Create your account</h1>
         <p className="mt-2 text-sm leading-6 text-zinc-500">Pick a unique username and start drafting. No email is collected.</p>
-        <AuthForm mode="register" action={registerAction} returnTo={returnTo} />
+        <AuthForm mode="register" action={registerAction} returnTo={returnTo} captchaSiteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} />
         <p className="mt-5 border-t border-white/8 pt-5 text-xs leading-5 text-zinc-600">
           Password recovery is not available in this MVP. Forgotten passwords require operator help.
         </p>
@@ -20,4 +20,3 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
     </main>
   );
 }
-

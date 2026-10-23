@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { LiveScoreRefresh } from "@/components/live-score-refresh";
 import { getCompetitionHub, type CompetitionStageView } from "@/lib/competitions/queries";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -53,6 +54,7 @@ export default async function WorldsPage() {
     ? (current.status === "OPEN" ? `/play/${current.slug}` : `/play/${current.slug}/leaderboard`)
     : null;
   const userStanding = competition.standings.find((entry) => entry.isCurrentUser);
+  const liveScoring = competition.stages.some((stage) => ["LOCKED", "LIVE"].includes(stage.status));
 
   return (
     <main>
@@ -168,7 +170,7 @@ export default async function WorldsPage() {
         )}
 
         <section id="standings" className="scroll-mt-24">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-200">Global competition</p><h2 className="mt-2 flex items-center gap-3 text-3xl font-black tracking-tight text-white"><Trophy className="size-7 text-amber-300" />Worlds standings</h2><p className="mt-2 text-sm text-zinc-500">Every roster window contributes to one cumulative score.</p></div>{competition.tournamentName && <Badge className="text-zinc-400">{competition.tournamentName}</Badge>}</div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-200">Global competition</p><h2 className="mt-2 flex items-center gap-3 text-3xl font-black tracking-tight text-white"><Trophy className="size-7 text-amber-300" />Worlds standings</h2><p className="mt-2 text-sm text-zinc-500">Every roster window contributes to one cumulative score.</p></div><div className="flex flex-col items-start gap-2 sm:items-end"><LiveScoreRefresh active={liveScoring} lastSyncAt={competition.lastSyncAt} />{competition.tournamentName && <Badge className="text-zinc-400">{competition.tournamentName}</Badge>}</div></div>
           {competition.standings.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-14 text-center"><Swords className="mx-auto size-8 text-zinc-700" /><h3 className="mt-4 text-xl font-black text-white">The race has not started</h3><p className="mt-2 text-sm text-zinc-600">Standings appear after the first Worlds lineup is submitted.</p></div>
           ) : (

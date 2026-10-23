@@ -192,6 +192,9 @@ npm run build
 npm run test:e2e
 ```
 
+Production setup, scheduled scoring, recovery procedures, and the launch checklist are documented in
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
 Database integration tests are opt-in so unit tests remain runnable without Docker:
 
 ```bash

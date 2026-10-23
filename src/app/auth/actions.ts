@@ -29,14 +29,22 @@ function parseCredentials(formData: FormData) {
   return { success: true as const, username: username.data, password: password.data };
 }
 
+function captchaToken(formData: FormData) {
+  const value = String(formData.get("cf-turnstile-response") ?? "").trim();
+  if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !value) return null;
+  return value || undefined;
+}
+
 export async function registerAction(_state: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const parsed = parseCredentials(formData);
   if (!parsed.success) return parsed;
+  const captcha = captchaToken(formData);
+  if (captcha === null) return { message: "Please complete the security check and try again." };
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({
     email: usernameToInternalEmail(parsed.username),
     password: parsed.password,
-    options: { data: { username: parsed.username } },
+    options: { data: { username: parsed.username }, captchaToken: captcha },
   });
   if (error || !data.user) return { message: "We could not create that account. Try another username." };
   if (!data.session) {
@@ -52,10 +60,13 @@ export async function registerAction(_state: AuthFormState, formData: FormData):
 export async function loginAction(_state: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const parsed = parseCredentials(formData);
   if (!parsed.success) return parsed;
+  const captcha = captchaToken(formData);
+  if (captcha === null) return { message: "Please complete the security check and try again." };
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({
     email: usernameToInternalEmail(parsed.username),
     password: parsed.password,
+    options: { captchaToken: captcha },
   });
   if (error) return { message: "The username or password is incorrect." };
   redirect(returnPath(formData));

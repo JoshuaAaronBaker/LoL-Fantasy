@@ -74,6 +74,7 @@ export interface CompetitionHubView {
   tournamentStart: string | null;
   tournamentEnd: string | null;
   databaseNow: string;
+  lastSyncAt: string | null;
   currentStage: CompetitionStageView | null;
   stages: CompetitionStageView[];
   remainingTeams: CompetitionTeamView[];
@@ -164,6 +165,15 @@ export async function getCompetitionHubWithDatabase(
     hasCurrentUserRoster: stage.has_current_user_roster,
   }));
   const currentStage = selectCurrentStage(stages, competition.database_now);
+  const syncRows = competition.tournament_id
+    ? await sql<Array<{ last_sync_at: string | null }>>`
+        select max(run.completed_at)::text as last_sync_at
+        from stage_sync_runs run
+        join tournament_stages stage on stage.id = run.stage_id
+        where stage.tournament_id = ${competition.tournament_id}
+          and run.status in ('SUCCEEDED', 'UNCHANGED')
+      `
+    : [{ last_sync_at: null }];
   const databaseNow = new Date(competition.database_now).valueOf();
   const revealedStages = stages.filter((stage) =>
     ["LOCKED", "LIVE", "COMPLETE"].includes(stage.status)
@@ -295,6 +305,7 @@ export async function getCompetitionHubWithDatabase(
     tournamentStart: competition.tournament_start,
     tournamentEnd: competition.tournament_end,
     databaseNow: competition.database_now,
+    lastSyncAt: syncRows[0]?.last_sync_at ?? null,
     currentStage,
     stages,
     remainingTeams: teams.map((team) => ({

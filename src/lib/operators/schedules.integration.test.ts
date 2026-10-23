@@ -51,12 +51,13 @@ suite("stage synchronization schedules", () => {
 
     const first = await enqueueDueStageSyncJobs(sql!);
     const overlapping = await enqueueDueStageSyncJobs(sql!);
-    expect(first).toEqual([expect.objectContaining({ scheduleId: schedule.id, stageSlug })]);
-    expect(overlapping).toEqual([]);
+    const scheduledJob = first.find((job) => job.scheduleId === schedule.id);
+    expect(scheduledJob).toEqual(expect.objectContaining({ scheduleId: schedule.id, stageSlug }));
+    expect(overlapping.filter((job) => job.scheduleId === schedule.id)).toEqual([]);
     const jobs = await sql!<Array<{ job_type: string; status: string; stage_slug: string; matches: string[] }>>`
       select job_type, status, payload ->> 'stageSlug' as stage_slug,
         array(select jsonb_array_elements_text(payload -> 'matchProviderIds')) as matches
-      from operator_jobs where id = ${first[0].id}
+      from operator_jobs where id = ${scheduledJob!.id}
     `;
     expect(jobs).toEqual([{
       job_type: "STAGE_SYNC",

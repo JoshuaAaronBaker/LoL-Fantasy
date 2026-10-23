@@ -49,7 +49,15 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
               </nav>
             </div>
           </header>
-          {children}
+          <div className="flex min-h-[calc(100vh-4rem)] flex-col">
+            <div className="flex-1">{children}</div>
+            <footer className="border-t border-white/8 bg-black/15">
+              <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-[11px] text-zinc-600 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <p>Independent fantasy project. Not endorsed by Riot Games.</p>
+                <div className="flex items-center gap-4"><Link href="/privacy" className="hover:text-zinc-300">Privacy</Link><Link href="/terms" className="hover:text-zinc-300">Terms</Link><a href="/api/health" className="hover:text-zinc-300">Status</a></div>
+              </div>
+            </footer>
+          </div>
         </div>
       </body>
     </html>

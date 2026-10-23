@@ -38,6 +38,7 @@ export interface StageLeaderboardView {
   status: string;
   lockAt: string;
   databaseNow: string;
+  lastSyncAt: string | null;
   lineupsRevealed: boolean;
   entries: LeaderboardEntryView[];
 }
@@ -46,10 +47,14 @@ export async function getStageLeaderboard(stageSlug: string, userId: string): Pr
   const sql = getDatabase();
   const stages = await sql<Array<{
     id: string; slug: string; name: string; tournament_name: string; status: string;
-    roster_lock_time: string | null; database_now: string;
+    roster_lock_time: string | null; database_now: string; last_sync_at: string | null;
   }>>`
     select s.id, s.slug, s.name, t.name as tournament_name, s.status,
-      s.roster_lock_time::text, clock_timestamp()::text as database_now
+      s.roster_lock_time::text, clock_timestamp()::text as database_now,
+      (
+        select max(run.completed_at)::text from stage_sync_runs run
+        where run.stage_id = s.id and run.status in ('SUCCEEDED', 'UNCHANGED')
+      ) as last_sync_at
     from tournament_stages s
     join tournaments t on t.id = s.tournament_id
     where s.slug = ${stageSlug}
@@ -142,6 +147,7 @@ export async function getStageLeaderboard(stageSlug: string, userId: string): Pr
     status: stage.status,
     lockAt: stage.roster_lock_time,
     databaseNow: stage.database_now,
+    lastSyncAt: stage.last_sync_at,
     lineupsRevealed,
     entries: rows.map((row) => ({
       rank: Number(row.rank),
@@ -158,4 +164,3 @@ export async function getStageLeaderboard(stageSlug: string, userId: string): Pr
     })),
   };
 }
-

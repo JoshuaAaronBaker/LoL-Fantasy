@@ -1,16 +1,57 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import Script from "next/script";
+import { useActionState, useCallback, useEffect, useRef } from "react";
 import type { AuthFormState } from "@/app/auth/actions";
 
 interface AuthFormProps {
   mode: "login" | "register";
   action: (state: AuthFormState, formData: FormData) => Promise<AuthFormState>;
   returnTo: string;
+  captchaSiteKey?: string;
 }
 
-export function AuthForm({ mode, action, returnTo }: AuthFormProps) {
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: HTMLElement, options: { sitekey: string; theme: "dark" }) => string;
+      reset: (widgetId?: string) => void;
+      remove: (widgetId: string) => void;
+    };
+  }
+}
+
+function TurnstileField({ siteKey, resetSignal }: { siteKey: string; resetSignal: unknown }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
+  const renderWidget = useCallback(() => {
+    if (!containerRef.current || !window.turnstile || widgetIdRef.current) return;
+    widgetIdRef.current = window.turnstile.render(containerRef.current, { sitekey: siteKey, theme: "dark" });
+  }, [siteKey]);
+
+  useEffect(() => {
+    renderWidget();
+    return () => {
+      if (widgetIdRef.current) window.turnstile?.remove(widgetIdRef.current);
+      widgetIdRef.current = null;
+    };
+  }, [renderWidget]);
+
+  useEffect(() => {
+    if (resetSignal && widgetIdRef.current) window.turnstile?.reset(widgetIdRef.current);
+  }, [resetSignal]);
+
+  return (
+    <div>
+      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" strategy="afterInteractive" onReady={renderWidget} />
+      <div ref={containerRef} />
+      <p className="mt-2 text-[10px] leading-4 text-zinc-600">Security check powered by Cloudflare Turnstile.</p>
+    </div>
+  );
+}
+
+export function AuthForm({ mode, action, returnTo, captchaSiteKey }: AuthFormProps) {
   const [state, formAction, pending] = useActionState(action, {});
   const registering = mode === "register";
   const alternate = registering ? "/login" : "/register";
@@ -52,6 +93,7 @@ export function AuthForm({ mode, action, returnTo }: AuthFormProps) {
         />
         {state.errors?.password?.map((error) => <p key={error} className="mt-2 text-sm text-rose-300">{error}</p>)}
       </div>
+      {captchaSiteKey && <TurnstileField siteKey={captchaSiteKey} resetSignal={state.message ? state : null} />}
       {state.message && <p role="alert" className="rounded-lg border border-rose-300/20 bg-rose-300/8 p-3 text-sm text-rose-200">{state.message}</p>}
       <button
         type="submit"
@@ -69,4 +111,3 @@ export function AuthForm({ mode, action, returnTo }: AuthFormProps) {
     </form>
   );
 }
-
