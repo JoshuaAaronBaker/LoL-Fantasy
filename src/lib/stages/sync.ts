@@ -248,8 +248,10 @@ export async function synchronizeStage(
             () => provider.getGamePlayerStats(game),
           );
           games.push({ game, stats: stats.stats, statsRaw: stats.raw });
+          reportProgress(`Loaded final stats for ${listedGame.providerId}.`);
         }
 
+        reportProgress(`Persisting ${matchId}.`);
         const result = await persistIngestionBundle(sql, { tournament, match, games }, "live");
         const assignments = await sql<Array<{ id: string }>>`
           update matches

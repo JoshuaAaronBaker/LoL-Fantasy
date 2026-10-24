@@ -117,6 +117,6 @@ describe("Cito client", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect(String(fetchImpl.mock.calls[1][0])).toContain("feed.lolesports.com/livestats/v1/window/123");
     const detailsUrl = new URL(String(fetchImpl.mock.calls[2][0]));
-    expect(detailsUrl.searchParams.get("startingTime")).toBe("2026-10-23T17:00:00.000Z");
+    expect(detailsUrl.searchParams.get("startingTime")).toBe("2026-10-23T17:31:00.000Z");
   });
 });
