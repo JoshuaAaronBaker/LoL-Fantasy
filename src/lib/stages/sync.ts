@@ -49,6 +49,22 @@ export interface StageSyncResult {
   scoring: { stages: number; rosters: number; players: number };
 }
 
+type ProgressReporter = (message: string) => void;
+
+async function withProviderTimeout<T>(label: string, operation: () => Promise<T>, timeoutMs = 90_000) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation(),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error(`${label} exceeded ${timeoutMs / 1_000} seconds.`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 function cleanError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return message.replace(/cito_(live|test)_[A-Za-z0-9_-]+/g, "[REDACTED]").slice(0, 2_000);
@@ -143,6 +159,7 @@ export async function synchronizeStage(
   sql: Sql,
   provider: EsportsDataProvider,
   input: SynchronizeStageInput,
+  reportProgress: ProgressReporter = () => undefined,
 ): Promise<StageSyncResult> {
   const stage = await findStage(sql, input.stageSlug);
   const requestedIds = input.matchIds ? uniqueIds(input.matchIds) : await assignedMatchIds(sql, stage.id);
@@ -187,44 +204,63 @@ export async function synchronizeStage(
     };
 
     const matchResults: StageSyncResult["matchResults"] = [];
+    const matchErrors: Array<{ matchId: string; message: string }> = [];
     let matchesAssigned = 0;
     let metadataChanged = false;
 
     for (const matchId of selectedIds) {
-      const match = await provider.getMatch(matchId, stage.tournament_provider_id);
-      if (match.providerId !== matchId) throw new Error(`Provider returned match ${match.providerId} for ${matchId}.`);
-      if (match.tournamentProviderId !== stage.tournament_provider_id) {
-        throw new Error(`Match ${matchId} belongs to tournament ${match.tournamentProviderId}.`);
-      }
-      if (knownStatuses.get(matchId)?.status !== match.status) metadataChanged = true;
+      reportProgress(`Checking ${matchId}.`);
+      try {
+        const match = await withProviderTimeout(
+          `Loading match ${matchId}`,
+          () => provider.getMatch(matchId, stage.tournament_provider_id),
+        );
+        if (match.providerId !== matchId) throw new Error(`Provider returned match ${match.providerId} for ${matchId}.`);
+        if (match.tournamentProviderId !== stage.tournament_provider_id) {
+          throw new Error(`Match ${matchId} belongs to tournament ${match.tournamentProviderId}.`);
+        }
+        if (knownStatuses.get(matchId)?.status !== match.status) metadataChanged = true;
 
-      const listedGames = shouldFetchMatchGames(match.status)
-        ? await provider.getMatchGames(matchId)
-        : [];
-      const existingGames = input.refreshCompleted ? new Set<string>() : await knownGameIds(sql, matchId);
-      const selectedGames = listedGames.filter((game) =>
-        isCompletedGameStatus(game.status) && !existingGames.has(game.providerId),
-      );
-      const games: IngestionBundle["games"] = [];
-      for (const listedGame of selectedGames) {
-        const game = await provider.getGame(listedGame.providerId, match.providerId);
-        if (!isCompletedGameStatus(game.status)) continue;
-        const stats = await provider.getGamePlayerStats(game);
-        games.push({ game, stats: stats.stats, statsRaw: stats.raw });
-      }
+        const listedGames = shouldFetchMatchGames(match.status)
+          ? await withProviderTimeout(`Loading games for ${matchId}`, () => provider.getMatchGames(matchId))
+          : [];
+        const existingGames = input.refreshCompleted ? new Set<string>() : await knownGameIds(sql, matchId);
+        const selectedGames = listedGames.filter((game) =>
+          isCompletedGameStatus(game.status) && !existingGames.has(game.providerId),
+        );
+        const games: IngestionBundle["games"] = [];
+        for (const listedGame of selectedGames) {
+          reportProgress(`Loading final stats for ${listedGame.providerId}.`);
+          const game = await withProviderTimeout(
+            `Loading game ${listedGame.providerId}`,
+            () => provider.getGame(listedGame.providerId, match.providerId),
+          );
+          if (!isCompletedGameStatus(game.status)) continue;
+          const stats = await withProviderTimeout(
+            `Loading stats for ${listedGame.providerId}`,
+            () => provider.getGamePlayerStats(game),
+          );
+          games.push({ game, stats: stats.stats, statsRaw: stats.raw });
+        }
 
-      const result = await persistIngestionBundle(sql, { tournament, match, games }, "live");
-      const assignments = await sql<Array<{ id: string }>>`
-        update matches
-        set stage_id = ${stage.id}
-        where provider = 'cito' and provider_id = ${matchId}
-          and tournament_id = ${stage.tournament_id}
-          and (stage_id is null or stage_id = ${stage.id})
-        returning id
-      `;
-      if (assignments.length !== 1) throw new Error(`Match ${matchId} could not be assigned to stage ${input.stageSlug}.`);
-      if (knownStatuses.get(matchId)?.stageId !== stage.id) matchesAssigned += 1;
-      matchResults.push({ ...result, matchId });
+        const result = await persistIngestionBundle(sql, { tournament, match, games }, "live");
+        const assignments = await sql<Array<{ id: string }>>`
+          update matches
+          set stage_id = ${stage.id}
+          where provider = 'cito' and provider_id = ${matchId}
+            and tournament_id = ${stage.tournament_id}
+            and (stage_id is null or stage_id = ${stage.id})
+          returning id
+        `;
+        if (assignments.length !== 1) throw new Error(`Match ${matchId} could not be assigned to stage ${input.stageSlug}.`);
+        if (knownStatuses.get(matchId)?.stageId !== stage.id) matchesAssigned += 1;
+        matchResults.push({ ...result, matchId });
+        reportProgress(`Finished ${matchId}; ingested ${result.gamesProcessed} game(s).`);
+      } catch (error) {
+        const message = cleanError(error);
+        matchErrors.push({ matchId, message });
+        reportProgress(`Deferred ${matchId}: ${message}`);
+      }
     }
 
     const finalized = await sql.begin(async (tx) => {
@@ -270,6 +306,10 @@ export async function synchronizeStage(
       || finalized.previousStatus !== finalized.nextStatus
       || matchResults.some((result) => result.status === "SUCCEEDED");
     const status = changed ? "SUCCEEDED" as const : "UNCHANGED" as const;
+    if (matchErrors.length > 0) {
+      const summary = matchErrors.map(({ matchId, message }) => `${matchId}: ${message}`).join("; ");
+      throw new Error(`Scoring was refreshed, but ${matchErrors.length} match(es) were deferred. ${summary}`);
+    }
     await sql`
       update stage_sync_runs
       set status = ${status}, resulting_stage_status = ${finalized.nextStatus},

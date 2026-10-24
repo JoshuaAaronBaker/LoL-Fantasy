@@ -22,7 +22,11 @@ async function main() {
     }
     console.info(JSON.stringify({ workerId, jobId: job.id, jobType: job.jobType, attempt: job.attempts }, null, 2));
     try {
-      const provider = new CitoEsportsDataProvider({ apiKey: env.CITO_API_KEY, minRequestIntervalMs: 6_100 });
+      const provider = new CitoEsportsDataProvider({
+        apiKey: env.CITO_API_KEY,
+        minRequestIntervalMs: 6_100,
+        maxRetries: 1,
+      });
       let result: unknown;
       if (job.jobType === "STAGE_BOOTSTRAP") {
         result = await runStageBootstrap(
@@ -42,7 +46,7 @@ async function main() {
           stageSlug: job.payload.stageSlug,
           matchIds: job.payload.matchProviderIds,
           refreshCompleted: job.payload.refreshCompleted,
-        });
+        }, (message) => console.info(`[${job.id}] ${message}`));
         result = syncResult;
         await finishStageSyncSchedule(sql, job.payload.scheduleId, syncResult.stageStatus);
       }
