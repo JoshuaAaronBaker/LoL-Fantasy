@@ -76,8 +76,20 @@ describe("stage pricing", () => {
     ]);
 
     expect(result.map(({ playerId, expertRank, price }) => [playerId, expertRank, price])).toEqual([
-      ["zeus", 1, 12_000_000],
-      ["zest", 19, 10_000_000],
+      ["zeus", 1, 15_000_000],
+      ["zest", 19, 7_500_000],
+    ]);
+  });
+
+  it("uses only expert ranking order for Worlds prices", () => {
+    const result = priceWorldsRankedPlayers([
+      { playerId: "zeus", displayName: "Zeus", role: "TOP", projectedPpg: 0 },
+      { playerId: "kiin", displayName: "Kiin", role: "TOP", projectedPpg: 100 },
+    ]);
+
+    expect(result.map(({ playerId, expertRank, price }) => [playerId, expertRank, price])).toEqual([
+      ["zeus", 1, 15_000_000],
+      ["kiin", 2, 14_500_000],
     ]);
   });
 

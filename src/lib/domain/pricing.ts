@@ -3,12 +3,11 @@ import { getWorldsPlayerRanking } from "./worlds-player-rankings";
 
 export const PRICING_METHOD = "role-percentile-8m-12m";
 export const PRICING_VERSION = 3;
-export const WORLDS_PRICING_METHOD = "worlds-expert-ranking-65-form-35";
-export const WORLDS_PRICING_VERSION = 4;
+export const WORLDS_PRICING_METHOD = "worlds-expert-ranking-100";
+export const WORLDS_PRICING_VERSION = 5;
 
 const WORLDS_MIN_PRICE = 6_500_000;
 const WORLDS_MAX_PRICE = 15_000_000;
-const WORLDS_RANKING_WEIGHT = 0.65;
 
 export interface PlayerPerformance {
   playerId: string;
@@ -88,14 +87,11 @@ export function priceWorldsRankedPlayers<T extends WorldsRankedPlayer>(projected
     if (!ranking) {
       throw new Error(`Missing Worlds ${player.role} ranking for ${player.displayName}.`);
     }
-    const blendedPercentile =
-      WORLDS_RANKING_WEIGHT * ranking.percentile +
-      (1 - WORLDS_RANKING_WEIGHT) * player.rolePercentile;
     return {
       ...player,
-      rolePercentile: blendedPercentile,
+      rolePercentile: ranking.percentile,
       price: roundToHalfMillion(
-        WORLDS_MIN_PRICE + blendedPercentile * (WORLDS_MAX_PRICE - WORLDS_MIN_PRICE),
+        WORLDS_MIN_PRICE + ranking.percentile * (WORLDS_MAX_PRICE - WORLDS_MIN_PRICE),
       ),
       expertRank: ranking.rank,
       expertFieldSize: ranking.fieldSize,
