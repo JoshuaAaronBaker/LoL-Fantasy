@@ -22,6 +22,12 @@ function timeLeft(lockAt: string, now: number) {
 
 export function RosterBuilder({ stage, userId }: { stage: StageRosterView; userId: string }) {
   const byId = useMemo(() => new Map(stage.players.map((player) => [player.id, player])), [stage.players]);
+  const priceRange = useMemo(() => stage.players.reduce(
+    (range, player) => ({ min: Math.min(range.min, player.price), max: Math.max(range.max, player.price) }),
+    { min: Number.POSITIVE_INFINITY, max: 0 },
+  ), [stage.players]);
+  const minPlayerPrice = Number.isFinite(priceRange.min) ? priceRange.min : 0;
+  const maxPlayerPrice = priceRange.max;
   const savedSelections = useMemo(() => Object.fromEntries(
     (stage.savedRoster?.playerIds ?? []).map((id) => [byId.get(id)?.role, id]).filter(([role]) => role),
   ) as Partial<Record<ProRole, string>>, [byId, stage.savedRoster]);
@@ -29,7 +35,7 @@ export function RosterBuilder({ stage, userId }: { stage: StageRosterView; userI
   const [captain, setCaptain] = useState<string | null>(stage.savedRoster?.captainPlayerId ?? null);
   const [activeRole, setActiveRole] = useState<ProRole | "ALL">("ALL");
   const [team, setTeam] = useState("ALL");
-  const [maxPrice, setMaxPrice] = useState(stage.players.reduce((max, player) => Math.max(max, player.price), 0));
+  const [maxPrice, setMaxPrice] = useState(maxPlayerPrice);
   const [sort, setSort] = useState<"points" | "price" | "priceAsc" | "value">("points");
   const [search, setSearch] = useState("");
   const [now, setNow] = useState(() => new Date(stage.databaseNow).valueOf());
@@ -163,7 +169,7 @@ export function RosterBuilder({ stage, userId }: { stage: StageRosterView; userI
           </select>
           <label className="sm:col-span-4 flex items-center gap-3 px-1 text-xs text-zinc-500">
             Max price {money(maxPrice)}
-            <input type="range" min={8_000_000} max={12_000_000} step={500_000} value={maxPrice} onChange={(event) => setMaxPrice(Number(event.target.value))} className="accent-lime-300" />
+            <input type="range" min={minPlayerPrice} max={maxPlayerPrice} step={500_000} value={maxPrice} onChange={(event) => setMaxPrice(Number(event.target.value))} className="accent-lime-300" />
           </label>
         </div>
 
