@@ -116,6 +116,7 @@ describe("Cito client", () => {
     expect(result.stats[9]).toMatchObject({ kills: 9, deaths: 1, assists: 1, cs: 209, visionScore: 34 });
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect(String(fetchImpl.mock.calls[1][0])).toContain("feed.lolesports.com/livestats/v1/window/123");
-    expect(String(fetchImpl.mock.calls[2][0])).toContain("startingTime=");
+    const detailsUrl = new URL(String(fetchImpl.mock.calls[2][0]));
+    expect(detailsUrl.searchParams.get("startingTime")).toBe("2026-10-23T17:00:00.000Z");
   });
 });

@@ -33,16 +33,6 @@ function numberAt(source: JsonRecord | null, key: string) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function unwrap(value: unknown): JsonRecord | null {
-  const outer = record(value);
-  return record(outer?.data) ?? record(outer?.result) ?? outer;
-}
-
-function gameDurationSeconds(game: NormalizedGame) {
-  const source = unwrap(game.raw);
-  return numberAt(source, "duration") ?? numberAt(source, "durationSeconds");
-}
-
 function riotGameId(providerId: string) {
   return providerId.replace(/^lol-game-/, "");
 }
@@ -78,14 +68,16 @@ function participantMetadata(payload: unknown) {
   return participants;
 }
 
-function firstFrameTime(payload: unknown) {
+function latestFrameTime(payload: unknown) {
   const frames = record(payload)?.frames;
   if (!Array.isArray(frames)) return null;
-  for (const value of frames) {
-    const timestamp = record(value)?.rfc460Timestamp;
-    if (typeof timestamp === "string" && !Number.isNaN(new Date(timestamp).valueOf())) return timestamp;
-  }
-  return null;
+  return frames
+    .map((value) => record(value)?.rfc460Timestamp)
+    .filter((timestamp): timestamp is string =>
+      typeof timestamp === "string" && !Number.isNaN(new Date(timestamp).valueOf()),
+    )
+    .sort((left, right) => left.localeCompare(right))
+    .at(-1) ?? null;
 }
 
 function finalFrame(payload: unknown) {
@@ -131,21 +123,19 @@ export async function getRiotFinalStats(
   game: NormalizedGame,
   timeoutMs = 15_000,
 ): Promise<RiotFinalStatsSnapshot> {
-  const duration = gameDurationSeconds(game);
-  if (!duration || duration <= 0) throw new Error(`Final game duration is missing for ${game.providerId}.`);
-
   const gameId = riotGameId(game.providerId);
   const windowUrl = new URL(`${RIOT_LIVE_STATS_BASE_URL}/window/${encodeURIComponent(gameId)}`);
   const windowPayload = await getJson(fetchImpl, windowUrl, timeoutMs);
   const metadata = participantMetadata(windowPayload);
-  const startedAt = firstFrameTime(windowPayload);
-  if (metadata.length !== 10 || !startedAt) {
+  const latestAt = latestFrameTime(windowPayload);
+  if (metadata.length !== 10 || !latestAt) {
     throw new Error(`Riot live stats metadata is incomplete for ${game.providerId}.`);
   }
 
-  const estimatedFinalTime = new Date(startedAt).valueOf() + (duration + 60) * 1_000;
-  // Riot's endpoint accepts timestamps on ten-second boundaries.
-  const finalTarget = new Date(Math.floor(estimatedFinalTime / 10_000) * 10_000).toISOString();
+  // The window endpoint returns the latest available frames when startingTime is
+  // omitted. Use that timestamp directly; treating it as the game's start and
+  // adding duration asks Riot for a future window that may never respond.
+  const finalTarget = new Date(Math.floor(new Date(latestAt).valueOf() / 10_000) * 10_000).toISOString();
   const detailsUrl = new URL(`${RIOT_LIVE_STATS_BASE_URL}/details/${encodeURIComponent(gameId)}`);
   detailsUrl.searchParams.set("startingTime", finalTarget);
   const detailsPayload = await getJson(fetchImpl, detailsUrl, timeoutMs);
