@@ -54,6 +54,27 @@ suite("competition hub", () => {
       returning id, user_id, stage_id
     `;
     const ruleSets = await sql!<Array<{ id: string }>>`select id from fantasy_scoring_rule_sets where is_active`;
+    const matches = await sql!<Array<{ id: string }>>`
+      insert into matches (provider, provider_id, tournament_id, stage_id, status)
+      values ('cito', ${`${prefix}-match`}, ${tournaments[0].id}, ${stageOne}, 'COMPLETED')
+      returning id
+    `;
+    const games = await sql!<Array<{ id: string }>>`
+      insert into games (provider, provider_id, match_id, game_number, status, source_kind)
+      values ('cito', ${`${prefix}-game`}, ${matches[0].id}, 1, 'COMPLETED', 'fixture')
+      returning id
+    `;
+    const stats = await sql!<Array<{ id: string }>>`
+      insert into player_game_stats (
+        game_id, player_id, team_id, role, kills, deaths, assists, cs, won
+      ) values (
+        ${games[0].id}, ${players[0].id}, ${teams[0].id}, 'MID', 5, 1, 8, 250, true
+      ) returning id
+    `;
+    await sql!`
+      insert into player_game_scores (player_game_stat_id, rule_set_id, base_score, breakdown)
+      values (${stats[0].id}, ${ruleSets[0].id}, 28.5, '{}')
+    `;
     for (const roster of rosters) {
       const score = roster.user_id === userOne ? (roster.stage_id === stageOne ? 20 : 15) : 20;
       await sql!`
@@ -99,6 +120,9 @@ suite("competition hub", () => {
       leaders: [
         { rank: 1, totalScore: 20, lineup: [{ name: "Worlds Player", isCaptain: true, finalScore: 20 }] },
         { rank: 1, totalScore: 20, lineup: [{ name: "Worlds Player", isCaptain: true, finalScore: 20 }] },
+      ],
+      topPerformers: [
+        { rank: 1, name: "Worlds Player", role: "MID", totalScore: 28.5, gamesScored: 1 },
       ],
     });
     expect(hub?.stagePodiums[1]).toMatchObject({

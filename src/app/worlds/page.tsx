@@ -8,6 +8,7 @@ import {
   CircleDot,
   Clock3,
   Crown,
+  Flame,
   Globe2,
   LockKeyhole,
   Medal,
@@ -119,41 +120,68 @@ export default async function WorldsPage() {
           <section id="stage-leaders" className="scroll-mt-24">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Round by round</p><h2 className="mt-2 flex items-center gap-3 text-3xl font-black tracking-tight text-white"><Medal className="size-7 text-cyan-300" />Stage leaders</h2><p className="mt-2 text-sm text-zinc-500">The highest-scoring rosters from every revealed Worlds stage.</p></div>
-              <p className="text-xs text-zinc-600">Top three · ties preserved</p>
+              <p className="text-xs text-zinc-600">Top three rosters · top five players</p>
             </div>
-            <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <div className="mt-6 space-y-4">
               {competition.stagePodiums.map((podium) => {
                 const leadingLineup = podium.leaders[0]?.lineup ?? [];
                 const href = `/play/${podium.stageSlug}/leaderboard`;
                 return (
-                  <Card key={podium.stageId} className="overflow-hidden p-0">
-                    <div className="flex items-start justify-between gap-4 border-b border-white/8 p-5">
-                      <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600">Stage {String(podium.sequence).padStart(2, "0")}</p><h3 className="mt-1 text-lg font-black text-white">{podium.stageName}</h3></div>
-                      <Badge className={stageStatusStyle(podium.status)}>{podium.status === "COMPLETE" ? "Final" : podium.status === "LIVE" ? "Live scoring" : "Locked"}</Badge>
-                    </div>
-                    {podium.leaders.length === 0 ? (
-                      <div className="px-5 py-9 text-center"><Clock3 className="mx-auto size-6 text-zinc-700" /><p className="mt-3 text-sm font-bold text-zinc-400">Awaiting scored rosters</p></div>
-                    ) : (
-                      <>
+                  <div key={podium.stageId} className="grid items-start gap-4 lg:grid-cols-2">
+                    <Card className="overflow-hidden p-0">
+                      <div className="flex items-start justify-between gap-4 border-b border-white/8 p-5">
+                        <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600">Stage {String(podium.sequence).padStart(2, "0")}</p><h3 className="mt-1 text-lg font-black text-white">{podium.stageName}</h3></div>
+                        <Badge className={stageStatusStyle(podium.status)}>{podium.status === "COMPLETE" ? "Final" : podium.status === "LIVE" ? "Live scoring" : "Locked"}</Badge>
+                      </div>
+                      {podium.leaders.length === 0 ? (
+                        <div className="px-5 py-9 text-center"><Clock3 className="mx-auto size-6 text-zinc-700" /><p className="mt-3 text-sm font-bold text-zinc-400">Awaiting scored rosters</p></div>
+                      ) : (
+                        <>
+                          <div className="divide-y divide-white/8">
+                            {podium.leaders.map((leader) => {
+                              const tied = podium.leaders.filter((entry) => entry.rank === leader.rank).length > 1;
+                              return (
+                                <div key={leader.rosterId} className={`flex items-center gap-3 px-5 py-3.5 ${leader.isCurrentUser ? "bg-lime-300/[0.035]" : ""}`}>
+                                  <span className={`grid size-8 shrink-0 place-items-center rounded-lg border font-mono text-[11px] font-black ${leader.rank === 1 ? "border-amber-300/25 bg-amber-300/10 text-amber-200" : "border-white/8 text-zinc-500"}`}>{tied ? `T${leader.rank}` : `#${leader.rank}`}</span>
+                                  <div className="min-w-0 flex-1"><p className="flex items-center gap-2 truncate text-sm font-black text-white">{leader.rank === 1 && <Crown className="size-3.5 text-amber-300" />}{leader.username}{leader.isCurrentUser && <span className="rounded-full bg-lime-300/10 px-2 py-0.5 text-[9px] uppercase tracking-wider text-lime-300">You</span>}</p><p className="mt-0.5 text-[9px] text-zinc-600">{leader.gamesScored} games · +{leader.captainBonus.toFixed(2)} captain</p></div>
+                                  <p className="font-mono text-lg font-black text-white">{leader.totalScore.toFixed(2)}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {leadingLineup.length > 0 && (
+                            <div className="border-t border-white/8 bg-black/15 px-5 py-4"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-zinc-600">Leading lineup</p><div className="mt-3 flex flex-wrap gap-2">{leadingLineup.map((player) => <span key={player.id} className="inline-flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/[0.025] px-2.5 py-1.5 text-[10px] text-zinc-400"><strong className="text-cyan-300">{player.role}</strong>{player.name}{player.isCaptain && <Crown className="size-3 text-amber-300" />}<span className="font-mono text-zinc-600">{player.finalScore.toFixed(2)}</span></span>)}</div></div>
+                          )}
+                        </>
+                      )}
+                      <div className="border-t border-white/8 px-5 py-3"><Link href={userId ? href : `/login?next=${encodeURIComponent(href)}`} className="inline-flex items-center gap-1.5 text-xs font-black text-cyan-300 hover:text-cyan-200">Full stage leaderboard<ArrowRight className="size-3.5" /></Link></div>
+                    </Card>
+
+                    <Card className="overflow-hidden p-0">
+                      <div className="flex items-start justify-between gap-4 border-b border-white/8 p-5">
+                        <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600">Stage {String(podium.sequence).padStart(2, "0")} · player scoring</p><h3 className="mt-1 flex items-center gap-2 text-lg font-black text-white"><Flame className="size-4 text-lime-300" />Top performers</h3></div>
+                        <Badge className="border-lime-300/20 bg-lime-300/8 text-lime-300">Top 5</Badge>
+                      </div>
+                      {podium.topPerformers.length === 0 ? (
+                        <div className="px-5 py-9 text-center"><Clock3 className="mx-auto size-6 text-zinc-700" /><p className="mt-3 text-sm font-bold text-zinc-400">Awaiting player scores</p></div>
+                      ) : (
                         <div className="divide-y divide-white/8">
-                          {podium.leaders.map((leader) => {
-                            const tied = podium.leaders.filter((entry) => entry.rank === leader.rank).length > 1;
+                          {podium.topPerformers.map((player) => {
+                            const tied = podium.topPerformers.filter((entry) => entry.rank === player.rank).length > 1;
                             return (
-                              <div key={leader.rosterId} className={`flex items-center gap-3 px-5 py-3.5 ${leader.isCurrentUser ? "bg-lime-300/[0.035]" : ""}`}>
-                                <span className={`grid size-8 shrink-0 place-items-center rounded-lg border font-mono text-[11px] font-black ${leader.rank === 1 ? "border-amber-300/25 bg-amber-300/10 text-amber-200" : "border-white/8 text-zinc-500"}`}>{tied ? `T${leader.rank}` : `#${leader.rank}`}</span>
-                                <div className="min-w-0 flex-1"><p className="flex items-center gap-2 truncate text-sm font-black text-white">{leader.rank === 1 && <Crown className="size-3.5 text-amber-300" />}{leader.username}{leader.isCurrentUser && <span className="rounded-full bg-lime-300/10 px-2 py-0.5 text-[9px] uppercase tracking-wider text-lime-300">You</span>}</p><p className="mt-0.5 text-[9px] text-zinc-600">{leader.gamesScored} games · +{leader.captainBonus.toFixed(2)} captain</p></div>
-                                <p className="font-mono text-lg font-black text-white">{leader.totalScore.toFixed(2)}</p>
+                              <div key={player.id} className="flex items-center gap-3 px-5 py-3">
+                                <span className={`grid size-8 shrink-0 place-items-center rounded-lg border font-mono text-[11px] font-black ${player.rank === 1 ? "border-lime-300/25 bg-lime-300/10 text-lime-300" : "border-white/8 text-zinc-500"}`}>{tied ? `T${player.rank}` : `#${player.rank}`}</span>
+                                <div className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/8 bg-black/20 text-[9px] font-black text-zinc-600">{player.imageUrl ? <img src={player.imageUrl} alt="" className="h-full w-full object-cover" /> : player.name.slice(0, 2).toUpperCase()}</div>
+                                <div className="min-w-0 flex-1"><p className="truncate text-sm font-black text-white">{player.name}</p><p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-600"><span className="text-cyan-300">{player.role}</span>{player.teamAbbreviation ? ` · ${player.teamAbbreviation}` : ""} · {player.gamesScored} {player.gamesScored === 1 ? "game" : "games"}</p></div>
+                                <div className="text-right"><p className="font-mono text-lg font-black text-white">{player.totalScore.toFixed(2)}</p><p className="text-[8px] font-black uppercase tracking-wider text-zinc-700">Points</p></div>
                               </div>
                             );
                           })}
                         </div>
-                        {leadingLineup.length > 0 && (
-                          <div className="border-t border-white/8 bg-black/15 px-5 py-4"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-zinc-600">Leading lineup</p><div className="mt-3 flex flex-wrap gap-2">{leadingLineup.map((player) => <span key={player.id} className="inline-flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/[0.025] px-2.5 py-1.5 text-[10px] text-zinc-400"><strong className="text-cyan-300">{player.role}</strong>{player.name}{player.isCaptain && <Crown className="size-3 text-amber-300" />}<span className="font-mono text-zinc-600">{player.finalScore.toFixed(2)}</span></span>)}</div></div>
-                        )}
-                      </>
-                    )}
-                    <div className="border-t border-white/8 px-5 py-3"><Link href={userId ? href : `/login?next=${encodeURIComponent(href)}`} className="inline-flex items-center gap-1.5 text-xs font-black text-cyan-300 hover:text-cyan-200">Full stage leaderboard<ArrowRight className="size-3.5" /></Link></div>
-                  </Card>
+                      )}
+                      <div className="border-t border-white/8 px-5 py-3 text-[10px] text-zinc-600">Raw fantasy points · no captain multiplier</div>
+                    </Card>
+                  </div>
                 );
               })}
             </div>

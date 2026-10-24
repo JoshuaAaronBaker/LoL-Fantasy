@@ -54,6 +54,18 @@ export interface CompetitionStageLeaderView {
   lineup: CompetitionStageLeaderPlayerView[];
 }
 
+export interface CompetitionStagePerformerView {
+  rank: number;
+  placement: number;
+  id: string;
+  name: string;
+  role: ProRole;
+  teamAbbreviation: string | null;
+  imageUrl: string | null;
+  totalScore: number;
+  gamesScored: number;
+}
+
 export interface CompetitionStagePodiumView {
   stageId: string;
   stageSlug: string;
@@ -61,6 +73,7 @@ export interface CompetitionStagePodiumView {
   sequence: number;
   status: string;
   leaders: CompetitionStageLeaderView[];
+  topPerformers: CompetitionStagePerformerView[];
 }
 
 export interface CompetitionHubView {
@@ -297,6 +310,63 @@ export async function getCompetitionHubWithDatabase(
     });
     leadersByStage.set(entry.stage_id, leaders);
   }
+  const performerRows = revealedStages.length > 0
+    ? await sql<Array<{
+        stage_id: string; rank: string; placement: string; player_id: string;
+        name: string; role: ProRole; team_abbreviation: string | null;
+        image_url: string | null; total_score: string; games_scored: number;
+      }>>`
+        with totals as (
+          select fixture.stage_id, stat.player_id,
+            (array_agg(stat.team_id order by game.game_number nulls last))[1] as team_id,
+            (array_agg(coalesce(stat.role, player.role) order by game.game_number nulls last))[1] as role,
+            round(sum(score.base_score), 2) as total_score,
+            count(distinct game.id)::int as games_scored
+          from matches fixture
+          join games game on game.match_id = fixture.id
+          join player_game_stats stat on stat.game_id = game.id
+          join pro_players player on player.id = stat.player_id
+          join player_game_scores score on score.player_game_stat_id = stat.id
+          join fantasy_scoring_rule_sets rules
+            on rules.id = score.rule_set_id and rules.is_active
+          where fixture.stage_id in ${sql(revealedStages.map((stage) => stage.id))}
+          group by fixture.stage_id, stat.player_id
+        ), ranked as (
+          select totals.*,
+            rank() over (partition by stage_id order by total_score desc) as rank,
+            row_number() over (
+              partition by stage_id order by total_score desc, player_id
+            ) as placement
+          from totals
+          where role is not null
+        )
+        select ranked.stage_id, ranked.rank, ranked.placement,
+          player.id as player_id, player.display_name as name, ranked.role,
+          team.abbreviation as team_abbreviation, player.image_url,
+          ranked.total_score::text, ranked.games_scored
+        from ranked
+        join pro_players player on player.id = ranked.player_id
+        left join pro_teams team on team.id = ranked.team_id
+        where ranked.rank <= 5
+        order by ranked.stage_id, ranked.placement
+      `
+    : [];
+  const performersByStage = new Map<string, CompetitionStagePerformerView[]>();
+  for (const player of performerRows) {
+    const performers = performersByStage.get(player.stage_id) ?? [];
+    performers.push({
+      rank: Number(player.rank),
+      placement: Number(player.placement),
+      id: player.player_id,
+      name: player.name,
+      role: player.role,
+      teamAbbreviation: player.team_abbreviation,
+      imageUrl: player.image_url,
+      totalScore: Number(player.total_score),
+      gamesScored: player.games_scored,
+    });
+    performersByStage.set(player.stage_id, performers);
+  }
 
   return {
     id: competition.id,
@@ -325,6 +395,7 @@ export async function getCompetitionHubWithDatabase(
       sequence: stage.sequence,
       status: stage.status,
       leaders: leadersByStage.get(stage.id) ?? [],
+      topPerformers: performersByStage.get(stage.id) ?? [],
     })),
     standings: standings.map((entry) => ({
       rank: Number(entry.rank),
