@@ -29,6 +29,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Use the Supabase transaction pooler
+        run: |
+          node -e 'const fs = require("node:fs"); const url = new URL(process.env.DATABASE_URL); if (url.hostname.endsWith(".pooler.supabase.com")) url.port = "6543"; fs.appendFileSync(process.env.GITHUB_ENV, `DATABASE_URL=${url.toString()}\n`);'
       - name: Queue due stage synchronizations
         run: npm run jobs:schedule
       - name: Process the oldest queued operator job
