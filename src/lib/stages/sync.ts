@@ -264,7 +264,12 @@ export async function synchronizeStage(
         reportProgress(`Persisting ${matchId}.`);
         const result = await withOperationTimeout(
           `Persisting ${matchId}`,
-          () => persistIngestionBundle(sql, { tournament, match, games }, "live"),
+          () => persistIngestionBundle(
+            sql,
+            { tournament, match, games },
+            "live",
+            { existingTournamentId: stage.tournament_id },
+          ),
           60_000,
         );
         const assignments = await withOperationTimeout(

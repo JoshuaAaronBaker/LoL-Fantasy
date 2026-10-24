@@ -151,6 +151,7 @@ export async function persistIngestionBundle(
   sql: Sql,
   bundle: IngestionBundle,
   sourceKind: SourceKind,
+  options: { existingTournamentId?: string } = {},
 ): Promise<IngestionResult> {
   const runRows = await sql<Array<{ id: string }>>`
     insert into ingestion_runs (provider, resource_type, resource_id, source_kind, status)
@@ -162,20 +163,33 @@ export async function persistIngestionBundle(
   try {
     const result = await sql.begin(async (tx) => {
       const ruleSet = await activeRules(tx);
-      const tournamentRows = await tx<Array<{ id: string }>>`
-        insert into tournaments (provider, provider_id, name, start_time, end_time, raw_payload)
-        values (
-          ${bundle.tournament.provider}, ${bundle.tournament.providerId}, ${bundle.tournament.name},
-          ${bundle.tournament.startTime}, ${bundle.tournament.endTime}, ${json(bundle.tournament.raw)}::jsonb
-        )
-        on conflict (provider, provider_id) do update set
-          name = excluded.name,
-          start_time = excluded.start_time,
-          end_time = excluded.end_time,
-          raw_payload = excluded.raw_payload
-        returning id
-      `;
-      const tournamentId = tournamentRows[0].id;
+      let tournamentId = options.existingTournamentId;
+      if (tournamentId) {
+        const tournamentRows = await tx<Array<{ id: string }>>`
+          select id from tournaments
+          where id = ${tournamentId}
+            and provider = ${bundle.tournament.provider}
+            and provider_id = ${bundle.tournament.providerId}
+        `;
+        if (!tournamentRows[0]) {
+          throw new Error(`Existing tournament ${tournamentId} does not match ${bundle.tournament.providerId}.`);
+        }
+      } else {
+        const tournamentRows = await tx<Array<{ id: string }>>`
+          insert into tournaments (provider, provider_id, name, start_time, end_time, raw_payload)
+          values (
+            ${bundle.tournament.provider}, ${bundle.tournament.providerId}, ${bundle.tournament.name},
+            ${bundle.tournament.startTime}, ${bundle.tournament.endTime}, ${json(bundle.tournament.raw)}::jsonb
+          )
+          on conflict (provider, provider_id) do update set
+            name = excluded.name,
+            start_time = excluded.start_time,
+            end_time = excluded.end_time,
+            raw_payload = excluded.raw_payload
+          returning id
+        `;
+        tournamentId = tournamentRows[0].id;
+      }
 
       const allTeams = new Map<string, NormalizedTeam>();
       for (const team of bundle.match.teams) allTeams.set(team.providerId, team);
