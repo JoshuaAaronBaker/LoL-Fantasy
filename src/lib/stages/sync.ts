@@ -51,7 +51,7 @@ export interface StageSyncResult {
 
 type ProgressReporter = (message: string) => void;
 
-async function withProviderTimeout<T>(label: string, operation: () => Promise<T>, timeoutMs = 90_000) {
+async function withOperationTimeout<T>(label: string, operation: () => Promise<T>, timeoutMs = 90_000) {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
@@ -218,7 +218,7 @@ export async function synchronizeStage(
     for (const matchId of selectedIds) {
       reportProgress(`Checking ${matchId}.`);
       try {
-        const match = await withProviderTimeout(
+        const match = await withOperationTimeout(
           `Loading match ${matchId}`,
           () => provider.getMatch(matchId, stage.tournament_provider_id),
         );
@@ -229,7 +229,7 @@ export async function synchronizeStage(
         if (knownStatuses.get(matchId)?.status !== match.status) metadataChanged = true;
 
         const listedGames = shouldFetchMatchGames(match.status)
-          ? await withProviderTimeout(`Loading games for ${matchId}`, () => provider.getMatchGames(matchId))
+          ? await withOperationTimeout(`Loading games for ${matchId}`, () => provider.getMatchGames(matchId))
           : [];
         const existingGames = input.refreshCompleted ? new Set<string>() : await knownGameIds(sql, matchId);
         const selectedGames = listedGames.filter((game) =>
@@ -238,12 +238,12 @@ export async function synchronizeStage(
         const games: IngestionBundle["games"] = [];
         for (const listedGame of selectedGames) {
           reportProgress(`Loading final stats for ${listedGame.providerId}.`);
-          const game = await withProviderTimeout(
+          const game = await withOperationTimeout(
             `Loading game ${listedGame.providerId}`,
             () => provider.getGame(listedGame.providerId, match.providerId),
           );
           if (!isCompletedGameStatus(game.status)) continue;
-          const stats = await withProviderTimeout(
+          const stats = await withOperationTimeout(
             `Loading stats for ${listedGame.providerId}`,
             () => provider.getGamePlayerStats(game),
           );
@@ -252,7 +252,11 @@ export async function synchronizeStage(
         }
 
         reportProgress(`Persisting ${matchId}.`);
-        const result = await persistIngestionBundle(sql, { tournament, match, games }, "live");
+        const result = await withOperationTimeout(
+          `Persisting ${matchId}`,
+          () => persistIngestionBundle(sql, { tournament, match, games }, "live"),
+          60_000,
+        );
         const assignments = await sql<Array<{ id: string }>>`
           update matches
           set stage_id = ${stage.id}
@@ -272,7 +276,7 @@ export async function synchronizeStage(
       }
     }
 
-    const finalized = await sql.begin(async (tx) => {
+    const finalized = await withOperationTimeout(`Finalizing stage ${input.stageSlug}`, () => sql.begin(async (tx) => {
       await tx`select pg_advisory_xact_lock(hashtextextended(${stage.id}, 0))`;
       const lockedStages = await tx<Array<{
         status: StageStatus;
@@ -307,7 +311,7 @@ export async function synchronizeStage(
       `;
       const scoring = await recalculateRosterScores(tx, stage.id);
       return { previousStatus: current.status, nextStatus, scoring };
-    });
+    }), 60_000);
 
     const gamesIngested = matchResults.reduce((total, result) => total + result.gamesProcessed, 0);
     const changed = metadataChanged

@@ -6,6 +6,7 @@ export function createDatabase(url: string) {
     prepare: false,
     idle_timeout: 20,
     connect_timeout: 15,
+    keep_alive: 10,
     connection: {
       application_name: "lol-fantasy",
       statement_timeout: 30_000,
