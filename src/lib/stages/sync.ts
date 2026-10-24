@@ -51,13 +51,23 @@ export interface StageSyncResult {
 
 type ProgressReporter = (message: string) => void;
 
+class OperationTimeoutError extends Error {
+  constructor(
+    readonly operationLabel: string,
+    timeoutMs: number,
+  ) {
+    super(`${operationLabel} exceeded ${timeoutMs / 1_000} seconds.`);
+    this.name = "OperationTimeoutError";
+  }
+}
+
 async function withOperationTimeout<T>(label: string, operation: () => Promise<T>, timeoutMs = 90_000) {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       operation(),
       new Promise<never>((_, reject) => {
-        timeout = setTimeout(() => reject(new Error(`${label} exceeded ${timeoutMs / 1_000} seconds.`)), timeoutMs);
+        timeout = setTimeout(() => reject(new OperationTimeoutError(label, timeoutMs)), timeoutMs);
       }),
     ]);
   } finally {
@@ -257,19 +267,31 @@ export async function synchronizeStage(
           () => persistIngestionBundle(sql, { tournament, match, games }, "live"),
           60_000,
         );
-        const assignments = await sql<Array<{ id: string }>>`
-          update matches
-          set stage_id = ${stage.id}
-          where provider = 'cito' and provider_id = ${matchId}
-            and tournament_id = ${stage.tournament_id}
-            and (stage_id is null or stage_id = ${stage.id})
-          returning id
-        `;
+        const assignments = await withOperationTimeout(
+          `Assigning ${matchId}`,
+          () => sql<Array<{ id: string }>>`
+            update matches
+            set stage_id = ${stage.id}
+            where provider = 'cito' and provider_id = ${matchId}
+              and tournament_id = ${stage.tournament_id}
+              and (stage_id is null or stage_id = ${stage.id})
+            returning id
+          `,
+          30_000,
+        );
         if (assignments.length !== 1) throw new Error(`Match ${matchId} could not be assigned to stage ${input.stageSlug}.`);
         if (knownStatuses.get(matchId)?.stageId !== stage.id) matchesAssigned += 1;
         matchResults.push({ ...result, matchId });
         reportProgress(`Finished ${matchId}; ingested ${result.gamesProcessed} game(s).`);
       } catch (error) {
+        // A provider failure only affects one match, but a stalled database write
+        // means the connection itself is unhealthy. Abort this run so the next
+        // scheduled worker starts with a clean pool instead of leaking one busy
+        // connection per match.
+        if (error instanceof OperationTimeoutError
+          && (error.operationLabel.startsWith("Persisting ") || error.operationLabel.startsWith("Assigning "))) {
+          throw error;
+        }
         const message = cleanError(error);
         matchErrors.push({ matchId, message });
         reportProgress(`Deferred ${matchId}: ${message}`);
@@ -345,11 +367,15 @@ export async function synchronizeStage(
       scoring: finalized.scoring,
     };
   } catch (error) {
-    await sql`
-      update stage_sync_runs
-      set status = 'FAILED', error_message = ${cleanError(error)}, completed_at = now()
-      where id = ${runId}
-    `.catch(() => undefined);
+    await withOperationTimeout(
+      `Recording failed stage sync ${runId}`,
+      () => sql`
+        update stage_sync_runs
+        set status = 'FAILED', error_message = ${cleanError(error)}, completed_at = now()
+        where id = ${runId}
+      `,
+      15_000,
+    ).catch(() => undefined);
     throw error;
   }
 }

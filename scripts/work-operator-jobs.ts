@@ -12,6 +12,11 @@ import { synchronizeStage } from "../src/lib/stages/sync";
 async function main() {
   const env = getServerEnv();
   if (!env.CITO_API_KEY) throw new Error("CITO_API_KEY is required to process operator jobs.");
+  const databaseEndpoint = new URL(env.DATABASE_URL);
+  console.info(JSON.stringify({
+    databaseHost: databaseEndpoint.hostname,
+    databasePort: databaseEndpoint.port || "5432",
+  }));
   const sql = createDatabase(env.DATABASE_URL);
   const workerId = `${hostname()}:${process.pid}:${randomUUID().slice(0, 8)}`;
   try {
@@ -53,11 +58,18 @@ async function main() {
       await completeOperatorJob(sql, job.id, workerId, result);
       console.info(JSON.stringify({ jobId: job.id, status: "SUCCEEDED", result }, null, 2));
     } catch (error) {
-      await failOperatorJob(sql, job.id, workerId, error);
+      await Promise.race([
+        failOperatorJob(sql, job.id, workerId, error),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("Timed out while recording the failed operator job.")), 15_000);
+        }),
+      ]).catch((failureError) => {
+        console.error(failureError instanceof Error ? failureError.message : failureError);
+      });
       throw error;
     }
   } finally {
-    await sql.end();
+    await sql.end({ timeout: 5 });
   }
 }
 
