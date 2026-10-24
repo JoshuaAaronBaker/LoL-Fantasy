@@ -112,10 +112,14 @@ async function validateKnownMatches(
     stage_id: string | null;
     status: string;
     start_time: string | null;
+    completed_games: number;
   }>>`
-    select provider_id, tournament_id, stage_id, status, start_time::text
-    from matches
-    where provider = 'cito' and provider_id in ${sql(matchIds)}
+    select m.provider_id, m.tournament_id, m.stage_id, m.status, m.start_time::text,
+      count(g.id) filter (where g.status in ('COMPLETE', 'COMPLETED', 'FINISHED', 'FINAL'))::int as completed_games
+    from matches m
+    left join games g on g.match_id = m.id
+    where m.provider = 'cito' and m.provider_id in ${sql(matchIds)}
+    group by m.id
   `;
   const conflict = rows.find((row) =>
     row.tournament_id !== stage.tournament_id || (row.stage_id && row.stage_id !== stage.id),
@@ -127,16 +131,19 @@ async function validateKnownMatches(
     status: row.status,
     stageId: row.stage_id,
     startTime: row.start_time,
+    completedGames: row.completed_games,
   }]));
 }
 
 export function shouldPollMatch(
-  match: { status: string; startTime: string | null } | undefined,
+  match: { status: string; startTime: string | null; completedGames?: number } | undefined,
   databaseNow: string,
   refreshCompleted = false,
 ) {
   if (refreshCompleted || !match) return true;
-  if (isTerminalMatchStatus(match.status)) return false;
+  // A provider can mark a match complete before its final game payload settles.
+  // Keep polling terminal matches until at least one completed game is safely stored.
+  if (isTerminalMatchStatus(match.status)) return (match.completedGames ?? 1) === 0;
   if (isLiveMatchStatus(match.status) || !match.startTime) return true;
   return new Date(match.startTime).valueOf() <= new Date(databaseNow).valueOf() + MATCH_POLL_LEAD_MS;
 }
