@@ -6,6 +6,7 @@ import {
   projectedFantasyPpg,
   type PlayerPerformance,
 } from "./pricing";
+import { WORLDS_PLAYER_RANKINGS } from "./worlds-player-rankings";
 
 const performance = (playerId: string, avgKills: number): PlayerPerformance => ({
   playerId,
@@ -91,6 +92,23 @@ describe("stage pricing", () => {
       ["zeus", 1, 15_000_000],
       ["kiin", 2, 14_500_000],
     ]);
+  });
+
+  it("keeps every Worlds role in ranking order regardless of projected form", () => {
+    for (const role of ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"] as const) {
+      const result = priceWorldsRankedPlayers(
+        WORLDS_PLAYER_RANKINGS[role].map((displayName, index, rankings) => ({
+          playerId: `${role}-${index}`,
+          displayName,
+          role,
+          projectedPpg: rankings.length - index,
+        })).reverse(),
+      ).sort((a, b) => a.expertRank - b.expertRank);
+
+      expect(result[0].price).toBe(15_000_000);
+      expect(result.at(-1)?.price).toBe(6_500_000);
+      expect(result.every((player, index) => index === 0 || result[index - 1].price >= player.price)).toBe(true);
+    }
   });
 
   it("requires every Worlds player to have a role-specific ranking", () => {
