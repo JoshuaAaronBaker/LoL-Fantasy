@@ -12,7 +12,10 @@ import {
 } from "@/lib/competitions/repository";
 import { selectWorldChampionshipCandidates } from "@/lib/competitions/worlds-candidates";
 import { getDatabase } from "@/lib/db/client";
+import { validateRoster } from "@/lib/domain/roster";
+import type { ProRole } from "@/lib/domain/types";
 import { getServerEnv } from "@/lib/env/server";
+import { recalculateRosterScores } from "@/lib/leaderboard/repository";
 import { requireOperator } from "@/lib/operators/access";
 import { enqueueStageBootstrapJob, stageBootstrapJobPayloadSchema } from "@/lib/operators/jobs";
 import { getOperatorWorldsView } from "@/lib/operators/queries";
@@ -24,6 +27,16 @@ import { resetWorldsStagePricing } from "@/lib/stages/reset-worlds-pricing";
 
 const candidateIdSchema = z.uuid();
 const stageIdSchema = z.uuid();
+const historicalRosterSchema = z.object({
+  username: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,20}$/),
+  stageSlug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  topName: z.string().trim().min(1).max(50),
+  jungleName: z.string().trim().min(1).max(50),
+  midName: z.string().trim().min(1).max(50),
+  botName: z.string().trim().min(1).max(50),
+  supportName: z.string().trim().min(1).max(50),
+  captainName: z.string().trim().min(1).max(50),
+});
 
 function provider() {
   const apiKey = getServerEnv().CITO_API_KEY;
@@ -191,6 +204,122 @@ export async function resetWorldsStagePricingAction(formData: FormData) {
     message = `Reset ${stageSlug} with ranking prices and removed ${result.removedRosters} submitted lineups.`;
   } catch {
     finish("The ranking reset was rejected. The stage must be open, unlocked, and have no ingested games.", true);
+  }
+  finish(message);
+}
+
+export async function repairHistoricalRosterAction(formData: FormData) {
+  await requireOperator();
+  let message: string;
+  try {
+    const input = historicalRosterSchema.parse({
+      username: formData.get("username"),
+      stageSlug: formData.get("stageSlug"),
+      topName: formData.get("topName"),
+      jungleName: formData.get("jungleName"),
+      midName: formData.get("midName"),
+      botName: formData.get("botName"),
+      supportName: formData.get("supportName"),
+      captainName: formData.get("captainName"),
+    });
+    const requested = [
+      { role: "TOP" as const, name: input.topName },
+      { role: "JUNGLE" as const, name: input.jungleName },
+      { role: "MID" as const, name: input.midName },
+      { role: "BOT" as const, name: input.botName },
+      { role: "SUPPORT" as const, name: input.supportName },
+    ];
+    const result = await getDatabase().begin(async (tx) => {
+      const stages = await tx<Array<{
+        id: string; slug: string; status: string; roster_lock_time: string | null;
+        salary_cap: string; max_players_per_team: number;
+      }>>`
+        select id, slug, status, roster_lock_time::text, salary_cap::text, max_players_per_team
+        from tournament_stages where slug = ${input.stageSlug} for update
+      `;
+      const stage = stages[0];
+      if (!stage || stages.length !== 1 || !["LOCKED", "LIVE", "COMPLETE"].includes(stage.status)) {
+        throw new Error("Historical repairs require one locked or completed stage.");
+      }
+      const profiles = await tx<Array<{ id: string; username: string }>>`
+        select id, username from profiles where username_normalized = ${input.username}
+      `;
+      const profile = profiles[0];
+      if (!profile) throw new Error("That username does not exist.");
+      const existing = await tx<Array<{ id: string }>>`
+        select id from fantasy_rosters where user_id = ${profile.id} and stage_id = ${stage.id}
+      `;
+      if (existing.length > 0) throw new Error("That user already has a roster for this stage.");
+
+      const normalizedNames = requested.map((player) => player.name.toLowerCase());
+      if (new Set(normalizedNames).size !== 5) throw new Error("The five players must be unique.");
+      const players = await tx<Array<{
+        id: string; display_name: string; team_id: string; role: ProRole;
+        price: string; eligible: boolean;
+      }>>`
+        select player.id, player.display_name, tournament_player.team_id, tournament_player.role,
+          price.price::text, (tournament_player.eligible and price.eligible) as eligible
+        from tournament_players tournament_player
+        join pro_players player on player.id = tournament_player.player_id
+        join player_stage_prices price
+          on price.stage_id = tournament_player.stage_id and price.player_id = tournament_player.player_id
+        where tournament_player.stage_id = ${stage.id}
+          and lower(player.display_name) in ${tx(normalizedNames)}
+      `;
+      const playersByName = new Map(players.map((player) => [player.display_name.toLowerCase(), player]));
+      const orderedPlayers = requested.map((requestedPlayer) => {
+        const player = playersByName.get(requestedPlayer.name.toLowerCase());
+        if (!player || player.role !== requestedPlayer.role) {
+          throw new Error(`${requestedPlayer.name} is not the ${requestedPlayer.role} player in this stage.`);
+        }
+        return player;
+      });
+      const captain = playersByName.get(input.captainName.toLowerCase());
+      if (!captain) throw new Error("The captain must be one of the five selected players.");
+      const validation = validateRoster(
+        { playerIds: orderedPlayers.map((player) => player.id), captainPlayerId: captain.id },
+        orderedPlayers.map((player) => ({
+          id: player.id,
+          teamId: player.team_id,
+          role: player.role,
+          price: Number(player.price),
+          eligible: player.eligible,
+        })),
+        { salaryCap: Number(stage.salary_cap), maxPlayersPerTeam: stage.max_players_per_team },
+      );
+      if (!validation.valid) throw new Error(validation.errors.join(" "));
+
+      const rosters = await tx<Array<{ id: string }>>`
+        insert into fantasy_rosters (
+          user_id, stage_id, captain_player_id, total_salary, submitted_at
+        ) values (
+          ${profile.id}, ${stage.id}, ${captain.id}, ${validation.totalSalary},
+          coalesce(${stage.roster_lock_time}::timestamptz - interval '1 millisecond', clock_timestamp())
+        ) returning id
+      `;
+      for (const player of orderedPlayers) {
+        await tx`
+          insert into fantasy_roster_players (
+            roster_id, player_id, team_id, role, acquisition_price
+          ) values (
+            ${rosters[0].id}, ${player.id}, ${player.team_id}, ${player.role}, ${player.price}
+          )
+        `;
+      }
+      await recalculateRosterScores(tx, stage.id);
+      const scores = await tx<Array<{
+        total_score: string; base_score: string; captain_bonus: string; games_scored: number;
+      }>>`
+        select total_score::text, base_score::text, captain_bonus::text, games_scored
+        from fantasy_roster_stage_scores where roster_id = ${rosters[0].id}
+      `;
+      if (!scores[0]) throw new Error("The repaired roster did not receive a stage score.");
+      return { username: profile.username, stageSlug: stage.slug, score: scores[0] };
+    });
+    revalidatePath(`/play/${result.stageSlug}/leaderboard`);
+    message = `Added ${result.username}'s historical lineup: ${Number(result.score.total_score).toFixed(2)} points (${Number(result.score.captain_bonus).toFixed(2)} captain bonus across ${result.score.games_scored} games).`;
+  } catch {
+    finish("Historical lineup repair was rejected. Verify the account, stage, roles, captain, and that no roster already exists.", true);
   }
   finish(message);
 }
