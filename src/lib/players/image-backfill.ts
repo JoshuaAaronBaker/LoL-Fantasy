@@ -42,9 +42,9 @@ export async function backfillCatalogPlayerImages(
     join tournament_players tournament_player on tournament_player.player_id = player.id
     join tournament_stages stage on stage.id = tournament_player.stage_id
     where player.provider = 'cito'
-      and player.image_url is null
+      and nullif(btrim(player.image_url), '') is null
       and (${stageSlug}::text is null or stage.slug = ${stageSlug})
-  `;
+    `;
 
   const restoredFromStoredPayloads = await sql<Array<{ id: string }>>`
     update pro_players player set
@@ -56,7 +56,7 @@ export async function backfillCatalogPlayerImages(
       ),
       updated_at = now()
     where player.provider = 'cito'
-      and player.image_url is null
+      and nullif(btrim(player.image_url), '') is null
       and coalesce(
         nullif(player.raw_payload->>'imageUrl', ''),
         nullif(player.raw_payload->>'headshotUrl', ''),
@@ -84,7 +84,7 @@ export async function backfillCatalogPlayerImages(
     join tournament_stages stage on stage.id = tournament_player.stage_id
     join pro_teams team on team.id = tournament_player.team_id
     where player.provider = 'cito'
-      and player.image_url is null
+      and nullif(btrim(player.image_url), '') is null
       and team.provider = 'cito'
       and (${stageSlug}::text is null or stage.slug = ${stageSlug})
     order by player.id, stage.sequence desc
@@ -115,7 +115,7 @@ export async function backfillCatalogPlayerImages(
         if (!candidate?.imageUrl) continue;
         const updated = await sql<Array<{ id: string }>>`
           update pro_players set image_url = ${candidate.imageUrl}, updated_at = now()
-          where id = ${missingPlayer.id} and image_url is null
+          where id = ${missingPlayer.id} and nullif(btrim(image_url), '') is null
           returning id
         `;
         restoredFromProvider += updated.length;
@@ -132,7 +132,7 @@ export async function backfillCatalogPlayerImages(
     join tournament_stages stage on stage.id = tournament_player.stage_id
     join pro_teams team on team.id = tournament_player.team_id
     where player.provider = 'cito'
-      and player.image_url is null
+      and nullif(btrim(player.image_url), '') is null
       and (${stageSlug}::text is null or stage.slug = ${stageSlug})
     order by team.name, player.display_name
   `;
