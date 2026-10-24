@@ -1,5 +1,12 @@
 import type { JSONValue, Sql } from "postgres";
-import { PRICING_METHOD, PRICING_VERSION, priceProjectedPlayers } from "@/lib/domain/pricing";
+import {
+  PRICING_METHOD,
+  PRICING_VERSION,
+  WORLDS_PRICING_METHOD,
+  WORLDS_PRICING_VERSION,
+  priceProjectedPlayers,
+  priceWorldsRankedPlayers,
+} from "@/lib/domain/pricing";
 import { validateRoster, type RosterCatalogPlayer } from "@/lib/domain/roster";
 import { PRO_ROLES, type ProRole } from "@/lib/domain/types";
 
@@ -11,7 +18,7 @@ export interface StageRolloverInput {
   eligibleTeamProviderIds: string[];
 }
 
-function hasValidRoster(players: RosterCatalogPlayer[]) {
+export function hasValidRoster(players: RosterCatalogPlayer[]) {
   const byRole = new Map(PRO_ROLES.map((role) => [
     role,
     players.filter((player) => player.role === role),
@@ -47,10 +54,18 @@ export async function openNextRoundFromStage(sql: Sql, input: StageRolloverInput
   }
 
   return sql.begin(async (tx) => {
-    const sourceRows = await tx<Array<{ id: string; tournament_id: string; sequence: number }>>`
-      select id, tournament_id, sequence
-      from tournament_stages
-      where id = ${input.sourceStageId}
+    const sourceRows = await tx<Array<{
+      id: string;
+      tournament_id: string;
+      sequence: number;
+      tournament_provider_id: string;
+      tournament_name: string;
+    }>>`
+      select stage.id, stage.tournament_id, stage.sequence,
+        tournament.provider_id as tournament_provider_id, tournament.name as tournament_name
+      from tournament_stages stage
+      join tournaments tournament on tournament.id = stage.tournament_id
+      where stage.id = ${input.sourceStageId}
       for update
     `;
     const source = sourceRows[0];
@@ -74,6 +89,7 @@ export async function openNextRoundFromStage(sql: Sql, input: StageRolloverInput
 
     const sourcePlayers = await tx<Array<{
       player_id: string;
+      display_name: string;
       team_id: string;
       role: ProRole;
       is_starter: boolean;
@@ -83,22 +99,31 @@ export async function openNextRoundFromStage(sql: Sql, input: StageRolloverInput
       projected_ppg: string;
       source_stats: JSONValue;
     }>>`
-      select player.player_id, player.team_id, player.role, player.is_starter,
+      select player.player_id, professional.display_name, player.team_id, player.role, player.is_starter,
         player.roster_status, player.roster_checked_at::text, player.raw_payload,
         price.projected_ppg::text, price.source_stats
       from tournament_players player
       join player_stage_prices price
         on price.stage_id = player.stage_id and price.player_id = player.player_id
+      join pro_players professional on professional.id = player.player_id
       where player.stage_id = ${source.id}
         and player.eligible
         and player.team_id in ${tx(teamIds)}
       order by player.role, player.player_id
     `;
-    const priced = priceProjectedPlayers(sourcePlayers.map((player) => ({
+    const pricingInputs = sourcePlayers.map((player) => ({
       ...player,
       playerId: player.player_id,
+      displayName: player.display_name,
       projectedPpg: Number(player.projected_ppg),
-    })));
+    }));
+    const usesWorldsRankings = /(^|[-_])worlds(?:[-_]|$)/i.test(source.tournament_provider_id)
+      || /world championship|\bworlds\b/i.test(source.tournament_name);
+    const priced = usesWorldsRankings
+      ? priceWorldsRankedPlayers(pricingInputs)
+      : priceProjectedPlayers(pricingInputs);
+    const pricingMethod = usesWorldsRankings ? WORLDS_PRICING_METHOD : PRICING_METHOD;
+    const pricingVersion = usesWorldsRankings ? WORLDS_PRICING_VERSION : PRICING_VERSION;
     const rosterPlayers = priced.map((player) => ({
       id: player.player_id,
       teamId: player.team_id,
@@ -166,8 +191,8 @@ export async function openNextRoundFromStage(sql: Sql, input: StageRolloverInput
           pricing_version, eligible, source_stats
         ) values (
           ${stageId}, ${player.player_id}, ${player.projectedPpg}, ${player.price},
-          ${player.rolePercentile}, ${`${PRICING_METHOD}-round-rollover`},
-          ${PRICING_VERSION}, true, ${tx.json(player.source_stats)}
+          ${player.rolePercentile}, ${`${pricingMethod}-round-rollover`},
+          ${pricingVersion}, true, ${tx.json(player.source_stats)}
         )
       `;
     }

@@ -27,6 +27,8 @@ export interface StageCatalogInput {
   name: string;
   lockAt: string;
   warnings: string[];
+  pricingMethod?: string;
+  pricingVersion?: number;
 }
 
 export function catalogHasValidRoster(players: CatalogPlayer[], salaryCap = 50_000_000, teamLimit = 2) {
@@ -163,7 +165,8 @@ export async function persistStageCatalog(sql: Sql, input: StageCatalogInput) {
           pricing_version, eligible, source_stats
         ) values (
           ${stageId}, ${playerId}, ${player.projectedPpg}, ${player.price}, ${player.rolePercentile},
-          ${PRICING_METHOD}, ${PRICING_VERSION}, true, ${json(player.statsRaw)}::jsonb
+          ${input.pricingMethod ?? PRICING_METHOD}, ${input.pricingVersion ?? PRICING_VERSION},
+          true, ${json(player.statsRaw)}::jsonb
         )
       `;
     }

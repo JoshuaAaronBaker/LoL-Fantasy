@@ -19,6 +19,7 @@ import { getOperatorWorldsView } from "@/lib/operators/queries";
 import { setStageSyncScheduleEnabled, upsertStageSyncSchedule } from "@/lib/operators/schedules";
 import { CitoEsportsDataProvider } from "@/lib/providers/cito/client";
 import { openNextRoundFromStage } from "@/lib/stages/rollover";
+import { resetWorldsStagePricing } from "@/lib/stages/reset-worlds-pricing";
 
 const candidateIdSchema = z.uuid();
 const stageIdSchema = z.uuid();
@@ -156,6 +157,19 @@ export async function openWorldsRoundFromStageAction(formData: FormData) {
     message = `Opened ${stageName} with ${result.players} players from ${result.teams} teams.`;
   } catch {
     finish("The redraft round could not be opened. Check the source, future lock, and teams playing this round.", true);
+  }
+  finish(message);
+}
+
+export async function resetWorldsStagePricingAction(formData: FormData) {
+  await requireOperator();
+  let message: string;
+  try {
+    const stageSlug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).parse(formData.get("stageSlug"));
+    const result = await resetWorldsStagePricing(getDatabase(), stageSlug);
+    message = `Reset ${stageSlug} with ranking prices and removed ${result.removedRosters} submitted lineups.`;
+  } catch {
+    finish("The ranking reset was rejected. The stage must be open, unlocked, and have no ingested games.", true);
   }
   finish(message);
 }

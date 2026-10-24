@@ -32,6 +32,7 @@ export interface OperatorStageReadiness {
   eligiblePlayers: number;
   eligibleTeams: number;
   assignedMatches: number;
+  rosterEntries: number;
 }
 
 export interface OperatorJobView {
@@ -118,16 +119,18 @@ export async function getOperatorWorldsViewWithDatabase(sql: Sql): Promise<Opera
   const stages = competition.tournament_id
     ? await sql<Array<{
         id: string; slug: string; name: string; sequence: number; status: string; lock_at: string | null;
-        eligible_players: number; eligible_teams: number; assigned_matches: number;
+        eligible_players: number; eligible_teams: number; assigned_matches: number; roster_entries: number;
       }>>`
         select stage.id, stage.slug, stage.name, stage.sequence, stage.status,
           stage.roster_lock_time::text as lock_at,
           count(distinct player.player_id) filter (where player.eligible)::int as eligible_players,
           count(distinct player.team_id) filter (where player.eligible)::int as eligible_teams,
-          count(distinct match.id)::int as assigned_matches
+          count(distinct match.id)::int as assigned_matches,
+          count(distinct roster.id)::int as roster_entries
         from tournament_stages stage
         left join tournament_players player on player.stage_id = stage.id
         left join matches match on match.stage_id = stage.id
+        left join fantasy_rosters roster on roster.stage_id = stage.id
         where stage.tournament_id = ${competition.tournament_id}
         group by stage.id
         order by stage.sequence
@@ -197,6 +200,7 @@ export async function getOperatorWorldsViewWithDatabase(sql: Sql): Promise<Opera
       eligiblePlayers: stage.eligible_players,
       eligibleTeams: stage.eligible_teams,
       assignedMatches: stage.assigned_matches,
+      rosterEntries: stage.roster_entries,
     })),
     jobs: jobs.map((job) => ({
       id: job.id,

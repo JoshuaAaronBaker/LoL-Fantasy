@@ -1,5 +1,11 @@
 import type { Sql } from "postgres";
-import { pricePlayers, projectedFantasyPpg } from "@/lib/domain/pricing";
+import {
+  WORLDS_PRICING_METHOD,
+  WORLDS_PRICING_VERSION,
+  pricePlayers,
+  priceWorldsRankedPlayers,
+  projectedFantasyPpg,
+} from "@/lib/domain/pricing";
 import {
   PRO_ROLES,
   type PlayerAggregateStats,
@@ -202,8 +208,9 @@ export async function runStageBootstrap(
     stats: statsById.get(item.row.player.providerId) ?? emptyStats(),
   }));
 
-  const priced = pricePlayers(collected.map(({ item, stats }) => ({
+  const pricingInputs = collected.map(({ item, stats }) => ({
     playerId: item.row.player.providerId,
+    displayName: item.row.player.displayName,
     role: item.row.role!,
     avgKills: stats.avgKills,
     avgDeaths: stats.avgDeaths,
@@ -211,7 +218,15 @@ export async function runStageBootstrap(
     avgCs: stats.avgCs,
     avgVisionScore: stats.avgVisionScore ?? 0,
     winRate: stats.winRate,
-  })));
+  }));
+  const usesWorldsRankings = /(^|[-_])worlds(?:[-_]|$)/i.test(tournament.providerId)
+    || /world championship|\bworlds\b/i.test(tournament.name);
+  const priced = usesWorldsRankings
+    ? priceWorldsRankedPlayers(pricingInputs.map((player) => ({
+        ...player,
+        projectedPpg: projectedFantasyPpg(player),
+      })))
+    : pricePlayers(pricingInputs);
   const priceById = new Map(priced.map((price) => [price.playerId, price]));
   const players: CatalogPlayer[] = collected.map(({ item, stats }) => ({
     ...priceById.get(item.row.player.providerId)!,
@@ -234,5 +249,7 @@ export async function runStageBootstrap(
     name: input.name,
     lockAt: lockAt.toISOString(),
     warnings,
+    pricingMethod: usesWorldsRankings ? WORLDS_PRICING_METHOD : undefined,
+    pricingVersion: usesWorldsRankings ? WORLDS_PRICING_VERSION : undefined,
   });
 }

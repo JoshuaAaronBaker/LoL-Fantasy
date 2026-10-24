@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   pricePlayers,
   priceProjectedPlayers,
+  priceWorldsRankedPlayers,
   projectedFantasyPpg,
   type PlayerPerformance,
 } from "./pricing";
@@ -66,5 +67,23 @@ describe("stage pricing", () => {
       ["first", 12_000_000],
       ["second", 8_000_000],
     ]);
+  });
+
+  it("anchors Worlds prices to the master ranking without re-normalizing eligible players", () => {
+    const result = priceWorldsRankedPlayers([
+      { playerId: "zeus", displayName: "Zeus", role: "TOP", projectedPpg: 10 },
+      { playerId: "zest", displayName: "Zest", role: "TOP", projectedPpg: 20 },
+    ]);
+
+    expect(result.map(({ playerId, expertRank, price }) => [playerId, expertRank, price])).toEqual([
+      ["zeus", 1, 12_000_000],
+      ["zest", 19, 10_000_000],
+    ]);
+  });
+
+  it("requires every Worlds player to have a role-specific ranking", () => {
+    expect(() => priceWorldsRankedPlayers([
+      { playerId: "unknown", displayName: "Unknown", role: "MID", projectedPpg: 20 },
+    ])).toThrow(/missing worlds mid ranking/i);
   });
 });
