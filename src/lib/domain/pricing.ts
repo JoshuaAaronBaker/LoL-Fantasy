@@ -3,10 +3,10 @@ import { getWorldsPlayerRanking } from "./worlds-player-rankings";
 
 export const PRICING_METHOD = "role-percentile-8m-12m";
 export const PRICING_VERSION = 3;
-export const WORLDS_PRICING_METHOD = "worlds-expert-ranking-100";
-export const WORLDS_PRICING_VERSION = 5;
+export const WORLDS_PRICING_METHOD = "worlds-expert-ranking-100-5m-15m";
+export const WORLDS_PRICING_VERSION = 6;
 
-const WORLDS_MIN_PRICE = 6_500_000;
+const WORLDS_MIN_PRICE = 5_000_000;
 const WORLDS_MAX_PRICE = 15_000_000;
 
 export interface PlayerPerformance {

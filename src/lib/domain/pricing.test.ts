@@ -78,7 +78,7 @@ describe("stage pricing", () => {
 
     expect(result.map(({ playerId, expertRank, price }) => [playerId, expertRank, price])).toEqual([
       ["zeus", 1, 15_000_000],
-      ["zest", 19, 7_500_000],
+      ["zest", 19, 6_000_000],
     ]);
   });
 
@@ -106,7 +106,7 @@ describe("stage pricing", () => {
       ).sort((a, b) => a.expertRank - b.expertRank);
 
       expect(result[0].price).toBe(15_000_000);
-      expect(result.at(-1)?.price).toBe(6_500_000);
+      expect(result.at(-1)?.price).toBe(5_000_000);
       expect(result.every((player, index) => index === 0 || result[index - 1].price >= player.price)).toBe(true);
     }
   });
