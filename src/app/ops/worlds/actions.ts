@@ -37,6 +37,11 @@ const historicalRosterSchema = z.object({
   supportName: z.string().trim().min(1).max(50),
   captainName: z.string().trim().min(1).max(50),
 });
+const historicalCaptainSchema = z.object({
+  username: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,20}$/),
+  stageSlug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  captainName: z.string().trim().min(1).max(50),
+});
 
 function provider() {
   const apiKey = getServerEnv().CITO_API_KEY;
@@ -316,10 +321,78 @@ export async function repairHistoricalRosterAction(formData: FormData) {
       if (!scores[0]) throw new Error("The repaired roster did not receive a stage score.");
       return { username: profile.username, stageSlug: stage.slug, score: scores[0] };
     });
+    revalidatePath("/worlds");
     revalidatePath(`/play/${result.stageSlug}/leaderboard`);
     message = `Added ${result.username}'s historical lineup: ${Number(result.score.total_score).toFixed(2)} points (${Number(result.score.captain_bonus).toFixed(2)} captain bonus across ${result.score.games_scored} games).`;
   } catch {
     finish("Historical lineup repair was rejected. Verify the account, stage, roles, captain, and that no roster already exists.", true);
+  }
+  finish(message);
+}
+
+export async function repairHistoricalCaptainAction(formData: FormData) {
+  await requireOperator();
+  let message: string;
+  try {
+    const input = historicalCaptainSchema.parse({
+      username: formData.get("username"),
+      stageSlug: formData.get("stageSlug"),
+      captainName: formData.get("captainName"),
+    });
+    const result = await getDatabase().begin(async (tx) => {
+      const stages = await tx<Array<{ id: string; slug: string; status: string }>>`
+        select id, slug, status from tournament_stages
+        where slug = ${input.stageSlug} for update
+      `;
+      const stage = stages[0];
+      if (!stage || stages.length !== 1 || !["LOCKED", "LIVE", "COMPLETE"].includes(stage.status)) {
+        throw new Error("Historical repairs require one locked or completed stage.");
+      }
+      const rosters = await tx<Array<{ id: string; username: string }>>`
+        select roster.id, profile.username
+        from fantasy_rosters roster
+        join profiles profile on profile.id = roster.user_id
+        where roster.stage_id = ${stage.id}
+          and profile.username_normalized = ${input.username}
+        for update of roster
+      `;
+      const roster = rosters[0];
+      if (!roster || rosters.length !== 1) throw new Error("That user has no roster for this stage.");
+      const captains = await tx<Array<{ id: string; display_name: string }>>`
+        select player.id, player.display_name
+        from fantasy_roster_players roster_player
+        join pro_players player on player.id = roster_player.player_id
+        where roster_player.roster_id = ${roster.id}
+          and lower(player.display_name) = ${input.captainName.toLowerCase()}
+      `;
+      const captain = captains[0];
+      if (!captain || captains.length !== 1) {
+        throw new Error("The new captain must already be on the submitted roster.");
+      }
+      await tx`
+        update fantasy_rosters set captain_player_id = ${captain.id}, updated_at = clock_timestamp()
+        where id = ${roster.id}
+      `;
+      await recalculateRosterScores(tx, stage.id);
+      const scores = await tx<Array<{
+        total_score: string; captain_bonus: string; games_scored: number;
+      }>>`
+        select total_score::text, captain_bonus::text, games_scored
+        from fantasy_roster_stage_scores where roster_id = ${roster.id}
+      `;
+      if (!scores[0]) throw new Error("The repaired captain did not receive a stage score.");
+      return {
+        username: roster.username,
+        captainName: captain.display_name,
+        stageSlug: stage.slug,
+        score: scores[0],
+      };
+    });
+    revalidatePath("/worlds");
+    revalidatePath(`/play/${result.stageSlug}/leaderboard`);
+    message = `Made ${result.captainName} captain for ${result.username}: ${Number(result.score.total_score).toFixed(2)} points (${Number(result.score.captain_bonus).toFixed(2)} captain bonus across ${result.score.games_scored} games).`;
+  } catch {
+    finish("Captain correction was rejected. Verify the account, completed stage, and that the captain is already on the roster.", true);
   }
   finish(message);
 }
