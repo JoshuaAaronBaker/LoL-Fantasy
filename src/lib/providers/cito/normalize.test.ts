@@ -28,9 +28,9 @@ describe("Cito normalization", () => {
       {
         data: {
           players: [
-            {
-              player: { id: "player-1", displayName: "Sample Mid" },
-              team: { id: "team-1", name: "Sample Blue" },
+          {
+              player: { id: "player-1", displayName: "Sample Mid", imageUrl: "https://example.com/mid.png" },
+              team: { id: "team-1", name: "Sample Blue", logoUrl: "https://example.com/blue.png" },
               role: "MID",
               kills: 8,
               deaths: 2,
@@ -51,6 +51,8 @@ describe("Cito normalization", () => {
       visionScore: 24,
       won: true,
       role: "MID",
+      player: { imageUrl: "https://example.com/mid.png" },
+      team: { imageUrl: "https://example.com/blue.png" },
     });
   });
 
@@ -72,7 +74,7 @@ describe("Cito normalization", () => {
         data: [
           {
             playerName: "Example",
-            player: { lolPlayerId: "player-uuid", currentIgn: "Example" },
+            player: { lolPlayerId: "player-uuid", currentIgn: "Example", imageUrl: "https://example.com/example.png" },
             teamSlug: "fly",
             teamName: "FlyQuest",
             team: { slug: "fly", name: "FlyQuest", shortName: "FLY" },
@@ -89,7 +91,7 @@ describe("Cito normalization", () => {
 
     expect(game).toMatchObject({ status: "COMPLETED", winnerTeamProviderId: "fly" });
     expect(stats[0]).toMatchObject({
-      player: { providerId: "player-uuid", displayName: "Example" },
+      player: { providerId: "player-uuid", displayName: "Example", imageUrl: "https://example.com/example.png" },
       team: { providerId: "fly", abbreviation: "FLY" },
       role: "BOT",
       won: true,

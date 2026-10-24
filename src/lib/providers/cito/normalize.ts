@@ -304,6 +304,7 @@ export function normalizePlayerStats(payload: unknown, game: NormalizedGame): No
         providerId: text(teamSource, ["id", "teamId", "team_id", "teamSlug", "slug"], true)!,
         name: text(teamSource, ["name", "teamName", "team_name", "teamSlug", "slug"], true)!,
         abbreviation: text(teamSource, ["abbreviation", "teamCode", "code", "shortName"]),
+        imageUrl: text(teamSource, ["logoUrl", "imageUrl", "logo"]),
         raw: teamValue ?? value,
       };
 
@@ -326,6 +327,8 @@ export function normalizePlayerStats(payload: unknown, game: NormalizedGame): No
           )!,
           role: canonicalRole(providerRole),
           teamProviderId: team.providerId,
+          imageUrl: text(playerSource, ["imageUrl", "headshotUrl", "avatarUrl"])
+            ?? text(source, ["imageUrl", "playerImageUrl"]),
           raw: playerValue ?? value,
         },
         team,

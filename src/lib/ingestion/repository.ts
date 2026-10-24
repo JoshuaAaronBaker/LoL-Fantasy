@@ -38,11 +38,13 @@ function cleanError(error: unknown) {
 
 async function upsertTeam(sql: Db, team: NormalizedTeam) {
   const rows = await sql<Array<{ id: string }>>`
-    insert into pro_teams (provider, provider_id, name, abbreviation, raw_payload)
-    values (${team.provider}, ${team.providerId}, ${team.name}, ${team.abbreviation}, ${json(team.raw)}::jsonb)
+    insert into pro_teams (provider, provider_id, name, abbreviation, image_url, raw_payload)
+    values (${team.provider}, ${team.providerId}, ${team.name}, ${team.abbreviation},
+      ${team.imageUrl ?? null}, ${json(team.raw)}::jsonb)
     on conflict (provider, provider_id) do update set
       name = excluded.name,
       abbreviation = excluded.abbreviation,
+      image_url = coalesce(excluded.image_url, pro_teams.image_url),
       raw_payload = excluded.raw_payload
     returning id
   `;
@@ -65,6 +67,7 @@ async function upsertPlayer(sql: Db, stat: IngestedPlayerStat, teamId: string) {
         display_name = ${stat.player.displayName},
         current_team_id = ${teamId},
         role = coalesce(${stat.player.role}, role),
+        image_url = coalesce(${stat.player.imageUrl ?? null}, image_url),
         raw_payload = ${json(stat.player.raw)}::jsonb,
         updated_at = now()
       where id = ${existing[0].id}
@@ -94,6 +97,7 @@ async function upsertPlayer(sql: Db, stat: IngestedPlayerStat, teamId: string) {
         display_name = ${stat.player.displayName},
         current_team_id = ${teamId},
         role = coalesce(${stat.player.role}, role),
+        image_url = coalesce(${stat.player.imageUrl ?? null}, image_url),
         raw_payload = ${json(stat.player.raw)}::jsonb,
         updated_at = now()
       where id = ${corrected[0].id}
@@ -103,10 +107,10 @@ async function upsertPlayer(sql: Db, stat: IngestedPlayerStat, teamId: string) {
 
   const rows = await sql<Array<{ id: string }>>`
     insert into pro_players (
-      provider, provider_id, display_name, current_team_id, role, raw_payload
+      provider, provider_id, display_name, current_team_id, role, image_url, raw_payload
     ) values (
       ${stat.player.provider}, ${stat.player.providerId}, ${stat.player.displayName},
-      ${teamId}, ${stat.player.role}, ${json(stat.player.raw)}::jsonb
+      ${teamId}, ${stat.player.role}, ${stat.player.imageUrl ?? null}, ${json(stat.player.raw)}::jsonb
     )
     returning id
   `;

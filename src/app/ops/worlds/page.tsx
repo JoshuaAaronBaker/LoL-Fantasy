@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   CircleDot,
   Database,
+  Images,
   ListChecks,
   RefreshCw,
   ShieldCheck,
@@ -19,6 +20,7 @@ import { requireOperator } from "@/lib/operators/access";
 import { getOperatorWorldsView } from "@/lib/operators/queries";
 import {
   connectWorldsTournamentAction,
+  backfillPlayerImagesAction,
   configureWorldsStageSyncAction,
   discoverWorldsTournamentsAction,
   enqueueWorldsStageBootstrapAction,
@@ -111,7 +113,10 @@ export default async function WorldsOperationsPage({ searchParams }: {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-lime-300">Tournament field</p><h2 className="mt-2 text-xl font-black text-white">Discovered teams</h2><p className="mt-1 text-sm text-zinc-500">Refresh from tournament matches before building a stage catalog.</p></div><form action={refreshWorldsTeamsAction}><button disabled={!view.tournamentId} className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"><Users className="size-3.5" />Refresh teams</button></form></div>
           {view.teams.length === 0 ? <p className="mt-6 rounded-xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-zinc-600">No teams have been discovered for the connected tournament.</p> : <div className="mt-5 grid gap-2 sm:grid-cols-2">{view.teams.map((team) => <div key={team.id} className="flex items-center gap-3 rounded-xl border border-white/8 bg-black/15 p-3"><span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/8 bg-black/20 text-[9px] font-black text-zinc-600">{team.imageUrl ? <img src={team.imageUrl} alt="" className="h-full w-full object-contain p-1" /> : (team.abbreviation ?? team.name.slice(0, 2)).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-sm font-black text-white">{team.name}</p><p className="font-mono text-[9px] text-zinc-600">{team.providerId}</p></div></div>)}</div>}
         </Card>
-        <Card className="p-5"><Database className="size-5 text-zinc-500" /><h3 className="mt-4 font-black text-white">Immutable stage catalogs</h3><p className="mt-2 text-sm leading-6 text-zinc-500">Opening a stage freezes its eligible players and prices. Eliminated teams are omitted with the explicit team list for the next window.</p></Card>
+        <div className="space-y-4">
+          <Card className="p-5"><Database className="size-5 text-zinc-500" /><h3 className="mt-4 font-black text-white">Immutable stage catalogs</h3><p className="mt-2 text-sm leading-6 text-zinc-500">Opening a stage freezes its eligible players and prices. Eliminated teams are omitted with the explicit team list for the next window.</p></Card>
+          <Card className="p-5"><Images className="size-5 text-cyan-300" /><h3 className="mt-4 font-black text-white">Player pictures</h3><p className="mt-2 text-sm leading-6 text-zinc-500">Restore missing catalog headshots from stored Cito payloads and current team rosters.</p><form action={backfillPlayerImagesAction} className="mt-4"><button className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-300/20 px-4 py-3 text-xs font-black uppercase tracking-wider text-cyan-200 hover:bg-cyan-300/10"><RefreshCw className="size-3.5" />Backfill pictures</button></form></Card>
+        </div>
       </section>
 
       <section className="mt-10">

@@ -17,6 +17,7 @@ import { requireOperator } from "@/lib/operators/access";
 import { enqueueStageBootstrapJob, stageBootstrapJobPayloadSchema } from "@/lib/operators/jobs";
 import { getOperatorWorldsView } from "@/lib/operators/queries";
 import { setStageSyncScheduleEnabled, upsertStageSyncSchedule } from "@/lib/operators/schedules";
+import { backfillCatalogPlayerImages } from "@/lib/players/image-backfill";
 import { CitoEsportsDataProvider } from "@/lib/providers/cito/client";
 import { openNextRoundFromStage } from "@/lib/stages/rollover";
 import { resetWorldsStagePricing } from "@/lib/stages/reset-worlds-pricing";
@@ -92,6 +93,26 @@ export async function refreshWorldsTeamsAction() {
     message = teams.length === 1 ? "Refreshed 1 tournament team." : `Refreshed ${teams.length} tournament teams.`;
   } catch {
     finish("Team refresh failed. Existing team records were preserved.", true);
+  }
+  finish(message);
+}
+
+export async function backfillPlayerImagesAction() {
+  await requireOperator();
+  let message: string;
+  try {
+    const apiKey = getServerEnv().CITO_API_KEY;
+    if (!apiKey) throw new Error("The Cito provider is not configured.");
+    const result = await backfillCatalogPlayerImages(
+      getDatabase(),
+      new CitoEsportsDataProvider({ apiKey, minRequestIntervalMs: 6_100 }),
+    );
+    const restored = result.restoredFromStoredPayloads + result.restoredFromProvider;
+    message = result.unresolved.length === 0
+      ? `Restored ${restored} player image${restored === 1 ? "" : "s"}; every catalog player now has a picture.`
+      : `Restored ${restored} player images; ${result.unresolved.length} still have no provider picture.`;
+  } catch {
+    finish("Player image backfill failed. Existing pictures were preserved.", true);
   }
   finish(message);
 }

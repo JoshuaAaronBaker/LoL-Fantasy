@@ -29,6 +29,7 @@
     "stage:assign-matches": "tsx scripts/assign-stage-matches.ts",
     "stage:sync": "tsx scripts/sync-stage.ts",
     "leaderboard:recalculate": "tsx scripts/recalculate-leaderboard.ts",
+    "players:backfill-images": "tsx scripts/backfill-player-images.ts",
     "test:e2e:seed": "tsx scripts/seed-e2e.ts",
     "test:e2e": "playwright test"
   },
