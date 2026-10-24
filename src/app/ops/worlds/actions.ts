@@ -213,6 +213,49 @@ export async function resetWorldsStagePricingAction(formData: FormData) {
   finish(message);
 }
 
+export async function updateWorldsStageLockAction(formData: FormData) {
+  await requireOperator();
+  let message: string;
+  try {
+    const stageId = stageIdSchema.parse(formData.get("stageId"));
+    const lockAt = z.iso.datetime().parse(formData.get("lockAt"));
+    const result = await getDatabase().begin(async (tx) => {
+      const stages = await tx<Array<{
+        id: string; name: string; slug: string; status: string; database_now: string;
+      }>>`
+        select id, name, slug, status, clock_timestamp()::text as database_now
+        from tournament_stages where id = ${stageId} for update
+      `;
+      const stage = stages[0];
+      if (!stage || stages.length !== 1 || !["OPEN", "LOCKED"].includes(stage.status)) {
+        throw new Error("Only one open or locked stage can be updated.");
+      }
+      if (new Date(lockAt) <= new Date(stage.database_now)) {
+        throw new Error("The new lock must be in the future.");
+      }
+      const games = await tx<Array<{ count: number }>>`
+        select count(*)::int as count
+        from games game join matches fixture on fixture.id = game.match_id
+        where fixture.stage_id = ${stage.id}
+      `;
+      if (games[0].count > 0) {
+        throw new Error("A stage with ingested games cannot be reopened.");
+      }
+      await tx`
+        update tournament_stages
+        set roster_lock_time = ${lockAt}, status = 'OPEN', updated_at = clock_timestamp()
+        where id = ${stage.id}
+      `;
+      return stage;
+    });
+    revalidatePath(`/play/${result.slug}`);
+    message = `Set ${result.name} to lock at ${new Date(lockAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" })} Pacific.`;
+  } catch {
+    finish("The roster lock was not changed. Use a future ISO timestamp; stages with ingested games cannot be reopened.", true);
+  }
+  finish(message);
+}
+
 export async function repairHistoricalRosterAction(formData: FormData) {
   await requireOperator();
   let message: string;
