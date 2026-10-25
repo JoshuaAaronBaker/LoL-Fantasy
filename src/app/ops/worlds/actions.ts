@@ -206,9 +206,9 @@ export async function resetWorldsStagePricingAction(formData: FormData) {
   try {
     const stageSlug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).parse(formData.get("stageSlug"));
     const result = await resetWorldsStagePricing(getDatabase(), stageSlug);
-    message = `Reset ${stageSlug} with ranking prices and removed ${result.removedRosters} submitted lineups.`;
+    message = `Rebalanced ${stageSlug} to $7M–$13M daily-slate ranking prices and removed ${result.removedRosters} submitted lineups.`;
   } catch {
-    finish("The ranking reset was rejected. The stage must be open, unlocked, and have no ingested games.", true);
+    finish("The price rebalance was rejected. The stage must be open, unlocked, and have no ingested games.", true);
   }
   finish(message);
 }

@@ -1,8 +1,8 @@
 import type { JSONValue, Sql } from "postgres";
 import {
-  WORLDS_PRICING_METHOD,
-  WORLDS_PRICING_VERSION,
-  priceWorldsRankedPlayers,
+  WORLDS_DAILY_PRICING_METHOD,
+  WORLDS_DAILY_PRICING_VERSION,
+  priceWorldsDailyRankedPlayers,
 } from "@/lib/domain/pricing";
 import type { ProRole } from "@/lib/domain/types";
 import { hasValidRoster } from "@/lib/stages/rollover";
@@ -69,7 +69,7 @@ export async function resetWorldsStagePricing(sql: Sql, stageSlug: string) {
         and price.eligible
       order by tournament_player.role, player.display_name
     `;
-    const priced = priceWorldsRankedPlayers(players.map((player) => ({
+    const priced = priceWorldsDailyRankedPlayers(players.map((player) => ({
       ...player,
       playerId: player.player_id,
       displayName: player.display_name,
@@ -98,7 +98,8 @@ export async function resetWorldsStagePricing(sql: Sql, stageSlug: string) {
           pricing_version, eligible, source_stats
         ) values (
           ${stage.id}, ${player.player_id}, ${player.projectedPpg}, ${player.price},
-          ${player.rolePercentile}, ${WORLDS_PRICING_METHOD}, ${WORLDS_PRICING_VERSION},
+          ${player.rolePercentile}, ${WORLDS_DAILY_PRICING_METHOD},
+          ${WORLDS_DAILY_PRICING_VERSION},
           true, ${tx.json(player.source_stats)}
         )
       `;
@@ -113,8 +114,8 @@ export async function resetWorldsStagePricing(sql: Sql, stageSlug: string) {
       removedRosters: rosters[0].count,
       minimumPrice: Math.min(...priced.map((player) => player.price)),
       maximumPrice: Math.max(...priced.map((player) => player.price)),
-      pricingMethod: WORLDS_PRICING_METHOD,
-      pricingVersion: WORLDS_PRICING_VERSION,
+      pricingMethod: WORLDS_DAILY_PRICING_METHOD,
+      pricingVersion: WORLDS_DAILY_PRICING_VERSION,
     };
   });
 }

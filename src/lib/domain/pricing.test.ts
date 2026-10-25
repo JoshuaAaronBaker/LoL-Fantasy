@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   pricePlayers,
   priceProjectedPlayers,
+  priceWorldsDailyRankedPlayers,
   priceWorldsRankedPlayers,
   projectedFantasyPpg,
   type PlayerPerformance,
@@ -92,6 +93,31 @@ describe("stage pricing", () => {
       ["zeus", 1, 15_000_000],
       ["kiin", 2, 14_500_000],
     ]);
+  });
+
+  it("rebalances a Worlds daily slate around the salary cap without changing expert order", () => {
+    const names = ["Zeus", "Kiin", "Siwoo", "TheShy", "BrokenBlade", "Dhokla", "369", "Myrwn"];
+    const result = priceWorldsDailyRankedPlayers(names.map((displayName, index) => ({
+      playerId: displayName.toLowerCase(),
+      displayName,
+      role: "TOP" as const,
+      projectedPpg: index,
+    }))).sort((a, b) => a.slateRank - b.slateRank);
+
+    expect(result.map(({ displayName, price }) => [displayName, price])).toEqual([
+      ["Zeus", 13_000_000],
+      ["Kiin", 12_000_000],
+      ["Siwoo", 11_500_000],
+      ["TheShy", 10_500_000],
+      ["BrokenBlade", 9_500_000],
+      ["Dhokla", 8_500_000],
+      ["369", 8_000_000],
+      ["Myrwn", 7_000_000],
+    ]);
+    expect(result.reduce((total, player) => total + player.price, 0) / result.length)
+      .toBe(10_000_000);
+    expect(result.every((player, index) => index === 0 || result[index - 1].price > player.price))
+      .toBe(true);
   });
 
   it("keeps every Worlds role in ranking order regardless of projected form", () => {

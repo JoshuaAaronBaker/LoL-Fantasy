@@ -2,10 +2,10 @@ import type { JSONValue, Sql } from "postgres";
 import {
   PRICING_METHOD,
   PRICING_VERSION,
-  WORLDS_PRICING_METHOD,
-  WORLDS_PRICING_VERSION,
+  WORLDS_DAILY_PRICING_METHOD,
+  WORLDS_DAILY_PRICING_VERSION,
   priceProjectedPlayers,
-  priceWorldsRankedPlayers,
+  priceWorldsDailyRankedPlayers,
 } from "@/lib/domain/pricing";
 import { validateRoster, type RosterCatalogPlayer } from "@/lib/domain/roster";
 import { PRO_ROLES, type ProRole } from "@/lib/domain/types";
@@ -120,10 +120,10 @@ export async function openNextRoundFromStage(sql: Sql, input: StageRolloverInput
     const usesWorldsRankings = /(^|[-_])worlds(?:[-_]|$)/i.test(source.tournament_provider_id)
       || /world championship|\bworlds\b/i.test(source.tournament_name);
     const priced = usesWorldsRankings
-      ? priceWorldsRankedPlayers(pricingInputs)
+      ? priceWorldsDailyRankedPlayers(pricingInputs)
       : priceProjectedPlayers(pricingInputs);
-    const pricingMethod = usesWorldsRankings ? WORLDS_PRICING_METHOD : PRICING_METHOD;
-    const pricingVersion = usesWorldsRankings ? WORLDS_PRICING_VERSION : PRICING_VERSION;
+    const pricingMethod = usesWorldsRankings ? WORLDS_DAILY_PRICING_METHOD : PRICING_METHOD;
+    const pricingVersion = usesWorldsRankings ? WORLDS_DAILY_PRICING_VERSION : PRICING_VERSION;
     const rosterPlayers = priced.map((player) => ({
       id: player.player_id,
       teamId: player.team_id,

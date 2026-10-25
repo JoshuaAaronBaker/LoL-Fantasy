@@ -43,11 +43,19 @@ function formatDate(value: string | null) {
   return value ? new Date(value).toLocaleString() : "Not supplied";
 }
 
-export default async function WorldsOperationsPage({ searchParams }: {
-  searchParams: Promise<{ notice?: string | string[]; error?: string | string[] }>;
+export default async function WorldsOperationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    notice?: string | string[];
+    error?: string | string[];
+  }>;
 }) {
   await requireOperator();
-  const [view, query] = await Promise.all([getOperatorWorldsView(), searchParams]);
+  const [view, query] = await Promise.all([
+    getOperatorWorldsView(),
+    searchParams,
+  ]);
   if (!view) notFound();
   const notice = firstQueryValue(query.notice);
   const error = firstQueryValue(query.error);
@@ -56,19 +64,36 @@ export default async function WorldsOperationsPage({ searchParams }: {
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <Link href="/worlds" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-zinc-500 hover:text-white">
-            <ArrowLeft className="size-3.5" />Worlds hub
+          <Link
+            href="/worlds"
+            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-zinc-500 hover:text-white"
+          >
+            <ArrowLeft className="size-3.5" />
+            Worlds hub
           </Link>
           <div className="mt-5 flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-300"><ShieldCheck className="size-5" /></span>
-            <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Operator console</p><h1 className="text-3xl font-black tracking-tight text-white">Worlds readiness</h1></div>
+            <span className="grid size-11 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-300">
+              <ShieldCheck className="size-5" />
+            </span>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">
+                Operator console
+              </p>
+              <h1 className="text-3xl font-black tracking-tight text-white">
+                Worlds readiness
+              </h1>
+            </div>
           </div>
         </div>
-        <Badge className="w-fit border-cyan-300/20 bg-cyan-300/8 text-cyan-300">Restricted access</Badge>
+        <Badge className="w-fit border-cyan-300/20 bg-cyan-300/8 text-cyan-300">
+          Restricted access
+        </Badge>
       </div>
 
       {(notice || error) && (
-        <div className={`mt-6 rounded-xl border px-4 py-3 text-sm font-bold ${error ? "border-rose-300/20 bg-rose-300/8 text-rose-200" : "border-lime-300/20 bg-lime-300/8 text-lime-300"}`}>
+        <div
+          className={`mt-6 rounded-xl border px-4 py-3 text-sm font-bold ${error ? "border-rose-300/20 bg-rose-300/8 text-rose-200" : "border-lime-300/20 bg-lime-300/8 text-lime-300"}`}
+        >
           {error ?? notice}
         </div>
       )}
@@ -76,34 +101,156 @@ export default async function WorldsOperationsPage({ searchParams }: {
       <section className="mt-8 grid gap-4 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-2">
           <div className="flex items-start justify-between gap-4">
-            <div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">Competition connection</p><h2 className="mt-2 text-xl font-black text-white">{view.tournamentName ?? "No tournament connected"}</h2><p className="mt-1 font-mono text-xs text-zinc-500">{view.tournamentProviderId ?? "Awaiting provider selection"}</p></div>
-            <Badge className={view.tournamentId ? "border-lime-300/20 bg-lime-300/8 text-lime-300" : "text-zinc-500"}>{view.tournamentId ? "Connected" : "Draft"}</Badge>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">
+                Competition connection
+              </p>
+              <h2 className="mt-2 text-xl font-black text-white">
+                {view.tournamentName ?? "No tournament connected"}
+              </h2>
+              <p className="mt-1 font-mono text-xs text-zinc-500">
+                {view.tournamentProviderId ?? "Awaiting provider selection"}
+              </p>
+            </div>
+            <Badge
+              className={
+                view.tournamentId
+                  ? "border-lime-300/20 bg-lime-300/8 text-lime-300"
+                  : "text-zinc-500"
+              }
+            >
+              {view.tournamentId ? "Connected" : "Draft"}
+            </Badge>
           </div>
           <div className="mt-5 grid gap-3 border-t border-white/8 pt-5 sm:grid-cols-3">
-            <div><p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">Provider check</p><p className="mt-1 text-xs text-zinc-300">{formatDate(view.providerCheckedAt)}</p></div>
-            <div><p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">Known teams</p><p className="mt-1 font-mono text-lg font-black text-white">{view.teams.length}</p></div>
-            <div><p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">Roster windows</p><p className="mt-1 font-mono text-lg font-black text-white">{view.stages.length}</p></div>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
+                Provider check
+              </p>
+              <p className="mt-1 text-xs text-zinc-300">
+                {formatDate(view.providerCheckedAt)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
+                Known teams
+              </p>
+              <p className="mt-1 font-mono text-lg font-black text-white">
+                {view.teams.length}
+              </p>
+            </div>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
+                Roster windows
+              </p>
+              <p className="mt-1 font-mono text-lg font-black text-white">
+                {view.stages.length}
+              </p>
+            </div>
           </div>
         </Card>
         <Card className="p-5">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">Provider catalog</p>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">Discovery reads the current Cito catalog and stores only World Championship candidates for review.</p>
-          <form action={discoverWorldsTournamentsAction} className="mt-5"><button className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-xs font-black uppercase tracking-wider text-zinc-950 hover:bg-cyan-200"><RefreshCw className="size-3.5" />Discover tournaments</button></form>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">
+            Provider catalog
+          </p>
+          <p className="mt-2 text-sm leading-6 text-zinc-400">
+            Discovery reads the current Cito catalog and stores only World
+            Championship candidates for review.
+          </p>
+          <form action={discoverWorldsTournamentsAction} className="mt-5">
+            <button className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-xs font-black uppercase tracking-wider text-zinc-950 hover:bg-cyan-200">
+              <RefreshCw className="size-3.5" />
+              Discover tournaments
+            </button>
+          </form>
         </Card>
       </section>
 
       <section className="mt-10">
-        <div className="flex items-end justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-200">Review gate</p><h2 className="mt-2 text-2xl font-black text-white">Tournament candidates</h2></div><p className="text-xs text-zinc-600">{view.candidates.length} found</p></div>
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-200">
+              Review gate
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-white">
+              Tournament candidates
+            </h2>
+          </div>
+          <p className="text-xs text-zinc-600">
+            {view.candidates.length} found
+          </p>
+        </div>
         {view.candidates.length === 0 ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-white/10 px-6 py-10 text-center"><CalendarDays className="mx-auto size-7 text-zinc-700" /><p className="mt-3 text-sm font-bold text-zinc-400">No Worlds candidate is stored</p><p className="mt-1 text-xs text-zinc-600">Run discovery when the provider catalog is ready.</p></div>
+          <div className="mt-4 rounded-2xl border border-dashed border-white/10 px-6 py-10 text-center">
+            <CalendarDays className="mx-auto size-7 text-zinc-700" />
+            <p className="mt-3 text-sm font-bold text-zinc-400">
+              No Worlds candidate is stored
+            </p>
+            <p className="mt-1 text-xs text-zinc-600">
+              Run discovery when the provider catalog is ready.
+            </p>
+          </div>
         ) : (
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {view.candidates.map((candidate) => {
-              const connected = candidate.providerId === view.tournamentProviderId;
+              const connected =
+                candidate.providerId === view.tournamentProviderId;
               return (
-                <Card key={candidate.id} className={`p-5 ${connected ? "border-lime-300/25" : ""}`}>
-                  <div className="flex items-start justify-between gap-4"><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-black text-white">{candidate.name}</h3>{candidate.isInternational && <Badge className="border-cyan-300/20 bg-cyan-300/8 text-cyan-300">International</Badge>}</div><p className="mt-1 text-xs text-zinc-500">{candidate.leagueName ?? candidate.leagueSlug ?? "League not supplied"}</p><p className="mt-2 font-mono text-[10px] text-zinc-600">{candidate.providerId}</p></div>{connected && <CheckCircle2 className="size-5 shrink-0 text-lime-300" />}</div>
-                  <div className="mt-4 flex items-end justify-between gap-3 border-t border-white/8 pt-4"><div><p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">Starts</p><p className="mt-1 text-xs text-zinc-400">{formatDate(candidate.startTime)}</p></div>{connected ? <span className="text-xs font-black text-lime-300">Connected</span> : <form action={connectWorldsTournamentAction}><input type="hidden" name="candidateId" value={candidate.id} /><button className="rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/5">Connect</button></form>}</div>
+                <Card
+                  key={candidate.id}
+                  className={`p-5 ${connected ? "border-lime-300/25" : ""}`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-black text-white">
+                          {candidate.name}
+                        </h3>
+                        {candidate.isInternational && (
+                          <Badge className="border-cyan-300/20 bg-cyan-300/8 text-cyan-300">
+                            International
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {candidate.leagueName ??
+                          candidate.leagueSlug ??
+                          "League not supplied"}
+                      </p>
+                      <p className="mt-2 font-mono text-[10px] text-zinc-600">
+                        {candidate.providerId}
+                      </p>
+                    </div>
+                    {connected && (
+                      <CheckCircle2 className="size-5 shrink-0 text-lime-300" />
+                    )}
+                  </div>
+                  <div className="mt-4 flex items-end justify-between gap-3 border-t border-white/8 pt-4">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
+                        Starts
+                      </p>
+                      <p className="mt-1 text-xs text-zinc-400">
+                        {formatDate(candidate.startTime)}
+                      </p>
+                    </div>
+                    {connected ? (
+                      <span className="text-xs font-black text-lime-300">
+                        Connected
+                      </span>
+                    ) : (
+                      <form action={connectWorldsTournamentAction}>
+                        <input
+                          type="hidden"
+                          name="candidateId"
+                          value={candidate.id}
+                        />
+                        <button className="rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/5">
+                          Connect
+                        </button>
+                      </form>
+                    )}
+                  </div>
                 </Card>
               );
             })}
@@ -113,63 +260,628 @@ export default async function WorldsOperationsPage({ searchParams }: {
 
       <section className="mt-10 grid gap-4 lg:grid-cols-[1fr_20rem]">
         <Card className="p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-lime-300">Tournament field</p><h2 className="mt-2 text-xl font-black text-white">Discovered teams</h2><p className="mt-1 text-sm text-zinc-500">Refresh from tournament matches before building a stage catalog.</p></div><form action={refreshWorldsTeamsAction}><button disabled={!view.tournamentId} className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"><Users className="size-3.5" />Refresh teams</button></form></div>
-          {view.teams.length === 0 ? <p className="mt-6 rounded-xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-zinc-600">No teams have been discovered for the connected tournament.</p> : <div className="mt-5 grid gap-2 sm:grid-cols-2">{view.teams.map((team) => <div key={team.id} className="flex items-center gap-3 rounded-xl border border-white/8 bg-black/15 p-3"><span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/8 bg-black/20 text-[9px] font-black text-zinc-600">{team.imageUrl ? <img src={team.imageUrl} alt="" className="h-full w-full object-contain p-1" /> : (team.abbreviation ?? team.name.slice(0, 2)).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-sm font-black text-white">{team.name}</p><p className="font-mono text-[9px] text-zinc-600">{team.providerId}</p></div></div>)}</div>}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-lime-300">
+                Tournament field
+              </p>
+              <h2 className="mt-2 text-xl font-black text-white">
+                Discovered teams
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Refresh from tournament matches before building a stage catalog.
+              </p>
+            </div>
+            <form action={refreshWorldsTeamsAction}>
+              <button
+                disabled={!view.tournamentId}
+                className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Users className="size-3.5" />
+                Refresh teams
+              </button>
+            </form>
+          </div>
+          {view.teams.length === 0 ? (
+            <p className="mt-6 rounded-xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-zinc-600">
+              No teams have been discovered for the connected tournament.
+            </p>
+          ) : (
+            <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              {view.teams.map((team) => (
+                <div
+                  key={team.id}
+                  className="flex items-center gap-3 rounded-xl border border-white/8 bg-black/15 p-3"
+                >
+                  <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/8 bg-black/20 text-[9px] font-black text-zinc-600">
+                    {team.imageUrl ? (
+                      <img
+                        src={team.imageUrl}
+                        alt=""
+                        className="h-full w-full object-contain p-1"
+                      />
+                    ) : (
+                      (team.abbreviation ?? team.name.slice(0, 2)).toUpperCase()
+                    )}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black text-white">
+                      {team.name}
+                    </p>
+                    <p className="font-mono text-[9px] text-zinc-600">
+                      {team.providerId}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
         <div className="space-y-4">
-          <Card className="p-5"><Database className="size-5 text-zinc-500" /><h3 className="mt-4 font-black text-white">Immutable stage catalogs</h3><p className="mt-2 text-sm leading-6 text-zinc-500">Opening a stage freezes its eligible players and prices. Eliminated teams are omitted with the explicit team list for the next window.</p></Card>
-          <Card className="p-5"><Images className="size-5 text-cyan-300" /><h3 className="mt-4 font-black text-white">Player pictures</h3><p className="mt-2 text-sm leading-6 text-zinc-500">Restore missing catalog headshots from stored Cito payloads and current team rosters.</p><form action={backfillPlayerImagesAction} className="mt-4"><button className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-300/20 px-4 py-3 text-xs font-black uppercase tracking-wider text-cyan-200 hover:bg-cyan-300/10"><RefreshCw className="size-3.5" />Backfill pictures</button></form></Card>
+          <Card className="p-5">
+            <Database className="size-5 text-zinc-500" />
+            <h3 className="mt-4 font-black text-white">
+              Immutable stage catalogs
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              Opening a stage freezes its eligible players and prices.
+              Eliminated teams are omitted with the explicit team list for the
+              next window.
+            </p>
+          </Card>
+          <Card className="p-5">
+            <Images className="size-5 text-cyan-300" />
+            <h3 className="mt-4 font-black text-white">Player pictures</h3>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              Restore missing catalog headshots from stored Cito payloads and
+              current team rosters.
+            </p>
+            <form action={backfillPlayerImagesAction} className="mt-4">
+              <button className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-300/20 px-4 py-3 text-xs font-black uppercase tracking-wider text-cyan-200 hover:bg-cyan-300/10">
+                <RefreshCw className="size-3.5" />
+                Backfill pictures
+              </button>
+            </form>
+          </Card>
         </div>
       </section>
 
       <section className="mt-10">
-        <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Stage readiness</p><h2 className="mt-2 text-2xl font-black text-white">Roster windows</h2></div>
-        {view.stages.length === 0 ? <div className="mt-4 rounded-2xl border border-dashed border-white/10 px-6 py-10 text-center"><CircleDot className="mx-auto size-7 text-zinc-700" /><p className="mt-3 text-sm font-bold text-zinc-400">No Worlds stage catalog exists yet</p></div> : <div className="mt-4 grid gap-3 lg:grid-cols-2">{view.stages.map((stage) => <Card key={stage.id} className="p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">Stage {String(stage.sequence).padStart(2, "0")}</p><h3 className="mt-1 font-black text-white">{stage.name}</h3></div><Badge>{stage.status}</Badge></div><div className="mt-4 grid grid-cols-4 gap-2 border-t border-white/8 pt-4 text-center"><div><p className="font-mono text-lg font-black text-white">{stage.eligibleTeams}</p><p className="text-[9px] uppercase text-zinc-600">Teams</p></div><div><p className="font-mono text-lg font-black text-white">{stage.eligiblePlayers}</p><p className="text-[9px] uppercase text-zinc-600">Players</p></div><div><p className="font-mono text-lg font-black text-white">{stage.rosterEntries}</p><p className="text-[9px] uppercase text-zinc-600">Entries</p></div><div><p className="font-mono text-lg font-black text-white">{stage.assignedMatches}</p><p className="text-[9px] uppercase text-zinc-600">Matches</p></div></div>{["OPEN", "LOCKED"].includes(stage.status) && <form action={updateWorldsStageLockAction} className="mt-4 flex flex-col gap-2 border-t border-cyan-300/10 pt-4 sm:flex-row sm:items-end"><input type="hidden" name="stageId" value={stage.id} /><label className="flex-1 text-[9px] font-black uppercase tracking-wider text-zinc-600">Roster lock (ISO)<input required name="lockAt" defaultValue={stage.lockAt ?? ""} className="mt-2 w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 font-mono text-[10px] font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40" /></label><button className="rounded-lg border border-cyan-300/20 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan-200 hover:bg-cyan-300/10">Set lock</button></form>}{stage.status === "OPEN" && <form action={resetWorldsStagePricingAction} className="mt-4 flex items-center justify-between gap-3 border-t border-rose-300/10 pt-4"><input type="hidden" name="stageSlug" value={stage.slug} /><p className="text-[10px] leading-4 text-zinc-600">Deletes current entries and applies ranking-only v6 ($5M–$15M). Blocked after game ingestion.</p><button className="shrink-0 rounded-lg border border-rose-300/20 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-rose-200 hover:bg-rose-300/10">Reset ranking prices</button></form>}</Card>)}</div>}
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">
+            Stage readiness
+          </p>
+          <h2 className="mt-2 text-2xl font-black text-white">
+            Roster windows
+          </h2>
+        </div>
+        {view.stages.length === 0 ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-white/10 px-6 py-10 text-center">
+            <CircleDot className="mx-auto size-7 text-zinc-700" />
+            <p className="mt-3 text-sm font-bold text-zinc-400">
+              No Worlds stage catalog exists yet
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {view.stages.map((stage) => (
+              <Card key={stage.id} className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
+                      Stage {String(stage.sequence).padStart(2, "0")}
+                    </p>
+                    <h3 className="mt-1 font-black text-white">{stage.name}</h3>
+                  </div>
+                  <Badge>{stage.status}</Badge>
+                </div>
+                <div className="mt-4 grid grid-cols-4 gap-2 border-t border-white/8 pt-4 text-center">
+                  <div>
+                    <p className="font-mono text-lg font-black text-white">
+                      {stage.eligibleTeams}
+                    </p>
+                    <p className="text-[9px] uppercase text-zinc-600">Teams</p>
+                  </div>
+                  <div>
+                    <p className="font-mono text-lg font-black text-white">
+                      {stage.eligiblePlayers}
+                    </p>
+                    <p className="text-[9px] uppercase text-zinc-600">
+                      Players
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-mono text-lg font-black text-white">
+                      {stage.rosterEntries}
+                    </p>
+                    <p className="text-[9px] uppercase text-zinc-600">
+                      Entries
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-mono text-lg font-black text-white">
+                      {stage.assignedMatches}
+                    </p>
+                    <p className="text-[9px] uppercase text-zinc-600">
+                      Matches
+                    </p>
+                  </div>
+                </div>
+                {["OPEN", "LOCKED"].includes(stage.status) && (
+                  <form
+                    action={updateWorldsStageLockAction}
+                    className="mt-4 flex flex-col gap-2 border-t border-cyan-300/10 pt-4 sm:flex-row sm:items-end"
+                  >
+                    <input type="hidden" name="stageId" value={stage.id} />
+                    <label className="flex-1 text-[9px] font-black uppercase tracking-wider text-zinc-600">
+                      Roster lock (ISO)
+                      <input
+                        required
+                        name="lockAt"
+                        defaultValue={stage.lockAt ?? ""}
+                        className="mt-2 w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 font-mono text-[10px] font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40"
+                      />
+                    </label>
+                    <button className="rounded-lg border border-cyan-300/20 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan-200 hover:bg-cyan-300/10">
+                      Set lock
+                    </button>
+                  </form>
+                )}
+                {stage.status === "OPEN" && (
+                  <form
+                    action={resetWorldsStagePricingAction}
+                    className="mt-4 flex items-center justify-between gap-3 border-t border-rose-300/10 pt-4"
+                  >
+                    <input type="hidden" name="stageSlug" value={stage.slug} />
+                    <p className="text-[10px] leading-4 text-zinc-600">
+                      Deletes current entries and rebalances the stage field by
+                      expert rank from $7M–$13M. Blocked after game ingestion.
+                    </p>
+                    <button className="shrink-0 rounded-lg border border-rose-300/20 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-rose-200 hover:bg-rose-300/10">
+                      Rebalance prices
+                    </button>
+                  </form>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="mt-10">
         <Card className="p-5">
-          <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Historical repair</p><h2 className="mt-2 text-xl font-black text-white">Restore a proven lineup</h2><p className="mt-1 text-sm text-zinc-500">Operator-only. Rejects open stages and existing entries, then recalculates the completed leaderboard.</p></div>
-          <form action={repairHistoricalRosterAction} className="mt-5 space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2"><label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Username<input required name="username" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40" /></label><label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Stage slug<input required name="stageSlug" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40" /></label></div>
-            <div className="grid gap-3 sm:grid-cols-5"><label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Top<input required name="topName" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40" /></label><label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Jungle<input required name="jungleName" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40" /></label><label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Mid<input required name="midName" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40" /></label><label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Bot<input required name="botName" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40" /></label><label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Support<input required name="supportName" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40" /></label></div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end"><label className="flex-1 text-[10px] font-black uppercase tracking-wider text-zinc-500">Captain<input required name="captainName" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40" /></label><button className="rounded-xl bg-violet-300 px-5 py-3 text-xs font-black uppercase tracking-wider text-zinc-950 hover:bg-violet-200">Repair and recalculate</button></div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">
+              Historical repair
+            </p>
+            <h2 className="mt-2 text-xl font-black text-white">
+              Restore a proven lineup
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Operator-only. Rejects open stages and existing entries, then
+              recalculates the completed leaderboard.
+            </p>
+          </div>
+          <form
+            action={repairHistoricalRosterAction}
+            className="mt-5 space-y-4"
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                Username
+                <input
+                  required
+                  name="username"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40"
+                />
+              </label>
+              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                Stage slug
+                <input
+                  required
+                  name="stageSlug"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40"
+                />
+              </label>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-5">
+              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                Top
+                <input
+                  required
+                  name="topName"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40"
+                />
+              </label>
+              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                Jungle
+                <input
+                  required
+                  name="jungleName"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40"
+                />
+              </label>
+              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                Mid
+                <input
+                  required
+                  name="midName"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40"
+                />
+              </label>
+              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                Bot
+                <input
+                  required
+                  name="botName"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40"
+                />
+              </label>
+              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                Support
+                <input
+                  required
+                  name="supportName"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40"
+                />
+              </label>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label className="flex-1 text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                Captain
+                <input
+                  required
+                  name="captainName"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-violet-300/40"
+                />
+              </label>
+              <button className="rounded-xl bg-violet-300 px-5 py-3 text-xs font-black uppercase tracking-wider text-zinc-950 hover:bg-violet-200">
+                Repair and recalculate
+              </button>
+            </div>
           </form>
-          <form action={repairHistoricalCaptainAction} className="mt-6 grid gap-3 border-t border-white/8 pt-5 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end"><label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Captain correction username<input required name="username" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-amber-300/40" /></label><label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Captain correction stage<input required name="stageSlug" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-amber-300/40" /></label><label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">New captain<input required name="captainName" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-amber-300/40" /></label><button className="rounded-xl bg-amber-200 px-5 py-3 text-xs font-black uppercase tracking-wider text-zinc-950 hover:bg-amber-100">Change captain</button></form>
+          <form
+            action={repairHistoricalCaptainAction}
+            className="mt-6 grid gap-3 border-t border-white/8 pt-5 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end"
+          >
+            <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+              Captain correction username
+              <input
+                required
+                name="username"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-amber-300/40"
+              />
+            </label>
+            <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+              Captain correction stage
+              <input
+                required
+                name="stageSlug"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-amber-300/40"
+              />
+            </label>
+            <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+              New captain
+              <input
+                required
+                name="captainName"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-amber-300/40"
+              />
+            </label>
+            <button className="rounded-xl bg-amber-200 px-5 py-3 text-xs font-black uppercase tracking-wider text-zinc-950 hover:bg-amber-100">
+              Change captain
+            </button>
+          </form>
         </Card>
       </section>
 
-      {view.stages.some((stage) => ["OPEN", "LOCKED", "LIVE"].includes(stage.status)) && (
+      {view.stages.some((stage) =>
+        ["OPEN", "LOCKED", "LIVE"].includes(stage.status),
+      ) && (
         <section className="mt-10">
-          <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-300">Automated scoring</p><h2 className="mt-2 text-2xl font-black text-white">Live-stage synchronization</h2><p className="mt-2 text-sm text-zinc-500">Save the complete provider match manifest once. The scheduler turns each due interval into a recoverable sync job.</p></div>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">{view.stages.filter((stage) => ["OPEN", "LOCKED", "LIVE"].includes(stage.status)).map((stage) => {
-            const schedule = view.schedules.find((entry) => entry.stageId === stage.id);
-            return <Card key={stage.id} className="p-5"><div className="flex items-start justify-between gap-3"><div><h3 className="font-black text-white">{stage.name}</h3><p className="mt-1 text-xs text-zinc-600">{schedule ? `${schedule.matchProviderIds.length} matches · every ${schedule.intervalMinutes} min` : "Not scheduled"}</p></div>{schedule && <Badge className={schedule.enabled ? "border-lime-300/20 bg-lime-300/8 text-lime-300" : "text-zinc-500"}>{schedule.enabled ? "Enabled" : "Paused"}</Badge>}</div><form action={configureWorldsStageSyncAction} className="mt-5 space-y-3"><input type="hidden" name="stageId" value={stage.id} /><label className="block text-[9px] font-black uppercase tracking-wider text-zinc-600">Complete match manifest<textarea required name="matchIds" defaultValue={schedule?.matchProviderIds.join("\n") ?? ""} placeholder="One provider match ID per line" rows={4} className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-xs font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40" /></label><div className="flex flex-col gap-3 sm:flex-row sm:items-end"><label className="flex-1 text-[9px] font-black uppercase tracking-wider text-zinc-600">Interval minutes<input required type="number" name="intervalMinutes" min={5} max={1440} defaultValue={schedule?.intervalMinutes ?? 15} className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-sm font-normal text-white outline-none focus:border-cyan-300/40" /></label><button className="inline-flex items-center justify-center gap-2 rounded-xl bg-lime-300 px-4 py-3 text-xs font-black uppercase tracking-wider text-zinc-950 hover:bg-lime-200"><RefreshCw className="size-3.5" />Save schedule</button></div></form>{schedule && <div className="mt-4 flex items-center justify-between border-t border-white/8 pt-4"><p className="text-[10px] text-zinc-600">Next due {formatDate(schedule.nextRunAt)}</p><form action={toggleWorldsStageSyncAction}><input type="hidden" name="stageId" value={stage.id} /><input type="hidden" name="enabled" value={schedule.enabled ? "false" : "true"} /><button className="text-xs font-black text-zinc-400 hover:text-white">{schedule.enabled ? "Pause" : "Resume"}</button></form></div>}</Card>;
-          })}</div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-300">
+              Automated scoring
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-white">
+              Live-stage synchronization
+            </h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              Save the complete provider match manifest once. The scheduler
+              turns each due interval into a recoverable sync job.
+            </p>
+          </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            {view.stages
+              .filter((stage) =>
+                ["OPEN", "LOCKED", "LIVE"].includes(stage.status),
+              )
+              .map((stage) => {
+                const schedule = view.schedules.find(
+                  (entry) => entry.stageId === stage.id,
+                );
+                return (
+                  <Card key={stage.id} className="p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-black text-white">{stage.name}</h3>
+                        <p className="mt-1 text-xs text-zinc-600">
+                          {schedule
+                            ? `${schedule.matchProviderIds.length} matches · every ${schedule.intervalMinutes} min`
+                            : "Not scheduled"}
+                        </p>
+                      </div>
+                      {schedule && (
+                        <Badge
+                          className={
+                            schedule.enabled
+                              ? "border-lime-300/20 bg-lime-300/8 text-lime-300"
+                              : "text-zinc-500"
+                          }
+                        >
+                          {schedule.enabled ? "Enabled" : "Paused"}
+                        </Badge>
+                      )}
+                    </div>
+                    <form
+                      action={configureWorldsStageSyncAction}
+                      className="mt-5 space-y-3"
+                    >
+                      <input type="hidden" name="stageId" value={stage.id} />
+                      <label className="block text-[9px] font-black uppercase tracking-wider text-zinc-600">
+                        Complete match manifest
+                        <textarea
+                          required
+                          name="matchIds"
+                          defaultValue={
+                            schedule?.matchProviderIds.join("\n") ?? ""
+                          }
+                          placeholder="One provider match ID per line"
+                          rows={4}
+                          className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-xs font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40"
+                        />
+                      </label>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <label className="flex-1 text-[9px] font-black uppercase tracking-wider text-zinc-600">
+                          Interval minutes
+                          <input
+                            required
+                            type="number"
+                            name="intervalMinutes"
+                            min={5}
+                            max={1440}
+                            defaultValue={schedule?.intervalMinutes ?? 15}
+                            className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-sm font-normal text-white outline-none focus:border-cyan-300/40"
+                          />
+                        </label>
+                        <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-lime-300 px-4 py-3 text-xs font-black uppercase tracking-wider text-zinc-950 hover:bg-lime-200">
+                          <RefreshCw className="size-3.5" />
+                          Save schedule
+                        </button>
+                      </div>
+                    </form>
+                    {schedule && (
+                      <div className="mt-4 flex items-center justify-between border-t border-white/8 pt-4">
+                        <p className="text-[10px] text-zinc-600">
+                          Next due {formatDate(schedule.nextRunAt)}
+                        </p>
+                        <form action={toggleWorldsStageSyncAction}>
+                          <input
+                            type="hidden"
+                            name="stageId"
+                            value={stage.id}
+                          />
+                          <input
+                            type="hidden"
+                            name="enabled"
+                            value={schedule.enabled ? "false" : "true"}
+                          />
+                          <button className="text-xs font-black text-zinc-400 hover:text-white">
+                            {schedule.enabled ? "Pause" : "Resume"}
+                          </button>
+                        </form>
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+          </div>
         </section>
       )}
 
       <section className="mt-10">
         <Card className="overflow-hidden p-0">
-          <div className="flex items-start gap-3 border-b border-white/8 p-5"><TerminalSquare className="mt-0.5 size-5 text-amber-200" /><div><h2 className="font-black text-white">Open the next redraft round</h2><p className="mt-1 text-sm text-zinc-500">Choose the teams playing this round and a future lock. Clone the verified prior catalog without provider calls, or request a fresh provider rebuild.</p></div></div>
+          <div className="flex items-start gap-3 border-b border-white/8 p-5">
+            <TerminalSquare className="mt-0.5 size-5 text-amber-200" />
+            <div>
+              <h2 className="font-black text-white">
+                Open the next redraft round
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Choose the teams playing this round and a future lock. Clone the
+                verified prior catalog without provider calls, or request a
+                fresh provider rebuild.
+              </p>
+            </div>
+          </div>
           {view.tournamentProviderId && view.teams.length > 0 ? (
-            <form action={enqueueWorldsStageBootstrapAction} className="space-y-5 p-5">
+            <form
+              action={enqueueWorldsStageBootstrapAction}
+              className="space-y-5 p-5"
+            >
               <div className="grid gap-4 sm:grid-cols-3">
-                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Stage slug<input required name="stageSlug" placeholder="worlds-swiss" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40" /></label>
-                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Stage name<input required name="stageName" placeholder="Worlds Swiss Stage" minLength={3} maxLength={80} className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40" /></label>
-                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Lock time (ISO)<input required name="lockAt" placeholder="2026-10-20T00:00:00Z" className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-xs font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40" /></label>
+                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                  Stage slug
+                  <input
+                    required
+                    name="stageSlug"
+                    placeholder="worlds-swiss"
+                    pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40"
+                  />
+                </label>
+                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                  Stage name
+                  <input
+                    required
+                    name="stageName"
+                    placeholder="Worlds Swiss Stage"
+                    minLength={3}
+                    maxLength={80}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40"
+                  />
+                </label>
+                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                  Lock time (ISO)
+                  <input
+                    required
+                    name="lockAt"
+                    placeholder="2026-10-20T00:00:00Z"
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-xs font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40"
+                  />
+                </label>
               </div>
-              <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Verified source catalog<select required name="sourceStageId" defaultValue={view.stages.filter((stage) => stage.eligiblePlayers > 0).at(-1)?.id ?? ""} className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40"><option value="" disabled>Choose a prior round</option>{view.stages.filter((stage) => stage.eligiblePlayers > 0).map((stage) => <option key={stage.id} value={stage.id}>{stage.name} · {stage.eligiblePlayers} players</option>)}</select></label>
-              <fieldset><legend className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Teams playing this round</legend><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{view.teams.map((team) => <label key={team.id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/8 bg-black/15 p-3 text-sm font-bold text-zinc-300 hover:border-white/15"><input type="checkbox" name="teamId" value={team.providerId} defaultChecked className="size-4 accent-lime-300" /><span className="truncate">{team.name}</span></label>)}</div></fieldset>
-              <div className="flex flex-col gap-3 border-t border-white/8 pt-5 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-zinc-600">Cloned Worlds rounds retain the master rankings; stored form remains informational only.</p><div className="flex flex-col gap-2 sm:flex-row"><button formAction={enqueueWorldsStageBootstrapAction} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-white/5"><RefreshCw className="size-3.5" />Provider rebuild</button><button formAction={openWorldsRoundFromStageAction} className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-200 px-5 py-3 text-xs font-black uppercase tracking-wider text-zinc-950 hover:bg-amber-100"><ListChecks className="size-3.5" />Open redraft round</button></div></div>
+              <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                Verified source catalog
+                <select
+                  required
+                  name="sourceStageId"
+                  defaultValue={
+                    view.stages
+                      .filter((stage) => stage.eligiblePlayers > 0)
+                      .at(-1)?.id ?? ""
+                  }
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-cyan-300/40"
+                >
+                  <option value="" disabled>
+                    Choose a prior round
+                  </option>
+                  {view.stages
+                    .filter((stage) => stage.eligiblePlayers > 0)
+                    .map((stage) => (
+                      <option key={stage.id} value={stage.id}>
+                        {stage.name} · {stage.eligiblePlayers} players
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <fieldset>
+                <legend className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                  Teams playing this round
+                </legend>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {view.teams.map((team) => (
+                    <label
+                      key={team.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/8 bg-black/15 p-3 text-sm font-bold text-zinc-300 hover:border-white/15"
+                    >
+                      <input
+                        type="checkbox"
+                        name="teamId"
+                        value={team.providerId}
+                        defaultChecked
+                        className="size-4 accent-lime-300"
+                      />
+                      <span className="truncate">{team.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <div className="flex flex-col gap-3 border-t border-white/8 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-zinc-600">
+                  Cloned Worlds rounds retain the master rankings; stored form
+                  remains informational only.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    formAction={enqueueWorldsStageBootstrapAction}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-white/5"
+                  >
+                    <RefreshCw className="size-3.5" />
+                    Provider rebuild
+                  </button>
+                  <button
+                    formAction={openWorldsRoundFromStageAction}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-200 px-5 py-3 text-xs font-black uppercase tracking-wider text-zinc-950 hover:bg-amber-100"
+                  >
+                    <ListChecks className="size-3.5" />
+                    Open redraft round
+                  </button>
+                </div>
+              </div>
             </form>
-          ) : <p className="p-5 text-sm text-zinc-600">The form unlocks after a tournament is connected and its teams are published.</p>}
+          ) : (
+            <p className="p-5 text-sm text-zinc-600">
+              The form unlocks after a tournament is connected and its teams are
+              published.
+            </p>
+          )}
         </Card>
       </section>
 
       <section className="mt-10">
-        <div className="flex items-end justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Durable work</p><h2 className="mt-2 text-2xl font-black text-white">Operator jobs</h2></div><code className="hidden rounded-lg border border-white/8 bg-black/20 px-3 py-2 text-[10px] text-zinc-500 sm:block">npm run jobs:work</code></div>
-        {view.jobs.length === 0 ? <div className="mt-4 rounded-2xl border border-dashed border-white/10 px-6 py-10 text-center"><ListChecks className="mx-auto size-7 text-zinc-700" /><p className="mt-3 text-sm font-bold text-zinc-400">No jobs have been queued</p></div> : <div className="mt-4 space-y-2">{view.jobs.map((job) => <Card key={job.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate text-sm font-black text-white">{job.stageName ?? job.jobType}</p><Badge className={job.status === "SUCCEEDED" ? "border-lime-300/20 bg-lime-300/8 text-lime-300" : job.status === "FAILED" ? "border-rose-300/20 bg-rose-300/8 text-rose-200" : job.status === "RUNNING" ? "border-cyan-300/20 bg-cyan-300/8 text-cyan-300" : "text-zinc-400"}>{job.status}</Badge></div><p className="mt-1 font-mono text-[10px] text-zinc-600">{job.stageSlug} · attempt {job.attempts}/{job.maxAttempts}</p>{job.errorMessage && <p className="mt-2 text-xs text-rose-300">{job.errorMessage}</p>}</div><p className="text-xs text-zinc-600">Queued {formatDate(job.createdAt)}</p></Card>)}</div>}
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">
+              Durable work
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-white">
+              Operator jobs
+            </h2>
+          </div>
+          <code className="hidden rounded-lg border border-white/8 bg-black/20 px-3 py-2 text-[10px] text-zinc-500 sm:block">
+            npm run jobs:work
+          </code>
+        </div>
+        {view.jobs.length === 0 ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-white/10 px-6 py-10 text-center">
+            <ListChecks className="mx-auto size-7 text-zinc-700" />
+            <p className="mt-3 text-sm font-bold text-zinc-400">
+              No jobs have been queued
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-2">
+            {view.jobs.map((job) => (
+              <Card
+                key={job.id}
+                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-black text-white">
+                      {job.stageName ?? job.jobType}
+                    </p>
+                    <Badge
+                      className={
+                        job.status === "SUCCEEDED"
+                          ? "border-lime-300/20 bg-lime-300/8 text-lime-300"
+                          : job.status === "FAILED"
+                            ? "border-rose-300/20 bg-rose-300/8 text-rose-200"
+                            : job.status === "RUNNING"
+                              ? "border-cyan-300/20 bg-cyan-300/8 text-cyan-300"
+                              : "text-zinc-400"
+                      }
+                    >
+                      {job.status}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 font-mono text-[10px] text-zinc-600">
+                    {job.stageSlug} · attempt {job.attempts}/{job.maxAttempts}
+                  </p>
+                  {job.errorMessage && (
+                    <p className="mt-2 text-xs text-rose-300">
+                      {job.errorMessage}
+                    </p>
+                  )}
+                </div>
+                <p className="text-xs text-zinc-600">
+                  Queued {formatDate(job.createdAt)}
+                </p>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );
