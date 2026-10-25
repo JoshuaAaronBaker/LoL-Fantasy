@@ -650,7 +650,7 @@ export default async function WorldsOperationsPage({
                             name="intervalMinutes"
                             min={5}
                             max={1440}
-                            defaultValue={schedule?.intervalMinutes ?? 15}
+                            defaultValue={schedule?.intervalMinutes ?? 5}
                             className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 font-mono text-sm font-normal text-white outline-none focus:border-cyan-300/40"
                           />
                         </label>
