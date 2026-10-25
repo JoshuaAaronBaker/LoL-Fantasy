@@ -41,8 +41,12 @@ jobs:
         run: |
           end_at=$((SECONDS + WATCH_MINUTES * 60))
           while true; do
-            npm run jobs:schedule
-            npm run jobs:work
+            if ! npm run jobs:schedule; then
+              echo "::warning::Could not queue this polling cycle; retrying in five minutes."
+            fi
+            if ! npm run jobs:work; then
+              echo "::warning::Could not complete this polling cycle; retrying in five minutes."
+            fi
 
             if (( SECONDS >= end_at )); then
               break
