@@ -193,7 +193,7 @@ export async function openWorldsRoundFromStageAction(formData: FormData) {
       lockAt,
       eligibleTeamProviderIds: requestedTeamIds,
     });
-    message = `Opened ${stageName} with ${result.players} players from ${result.teams} teams.`;
+    message = `Opened ${stageName} with ${result.players} players from ${result.teams} teams${result.removedRosters > 0 ? `; removed ${result.removedRosters} invalid prior lineup${result.removedRosters === 1 ? "" : "s"}` : ""}.`;
   } catch {
     finish("The redraft round could not be opened. Check the source, future lock, and teams playing this round.", true);
   }

@@ -89,6 +89,13 @@ suite("stage catalog repository", () => {
     `).resolves.toEqual([{ count: 15 }]);
     await expect(openNextRoundFromStage(sql!, {
       sourceStageId: source!.id,
+      slug: "integration-round-two",
+      name: "Integration Round Two Corrected",
+      lockAt: "2099-01-02T12:00:00.000Z",
+      eligibleTeamProviderIds: teams.map(({ team }) => team.providerId),
+    })).resolves.toMatchObject({ status: "OPEN", players: 15, teams: 3, removedRosters: 0 });
+    await expect(openNextRoundFromStage(sql!, {
+      sourceStageId: source!.id,
       slug: "integration-invalid-round",
       name: "Integration Invalid Round",
       lockAt: "2099-01-03T00:00:00.000Z",

@@ -141,8 +141,27 @@ export async function openNextRoundFromStage(sql: Sql, input: StageRolloverInput
       where tournament_id = ${source.tournament_id} and slug = ${input.slug}
       for update
     `;
-    if (existing[0] && existing[0].status !== "UPCOMING") {
+    if (existing[0] && !["UPCOMING", "OPEN"].includes(existing[0].status)) {
       throw new Error(`Stage ${input.slug} is already ${existing[0].status}; its catalog is immutable.`);
+    }
+    let removedRosters = 0;
+    if (existing[0]?.status === "OPEN") {
+      const activity = await tx<Array<{ games: number; scored_rosters: number; rosters: number }>>`
+        select
+          (select count(*)::int from games game
+            join matches fixture on fixture.id = game.match_id
+            where fixture.stage_id = ${existing[0].id}) as games,
+          (select count(*)::int from fantasy_roster_stage_scores score
+            where score.stage_id = ${existing[0].id} and score.games_scored > 0) as scored_rosters,
+          (select count(*)::int from fantasy_rosters roster
+            where roster.stage_id = ${existing[0].id}) as rosters
+      `;
+      if (activity[0].games > 0 || activity[0].scored_rosters > 0) {
+        throw new Error(`Stage ${input.slug} has started scoring; its catalog is immutable.`);
+      }
+      removedRosters = activity[0].rosters;
+      await tx`update tournament_stages set status = 'UPCOMING', updated_at = now() where id = ${existing[0].id}`;
+      await tx`delete from fantasy_rosters where stage_id = ${existing[0].id}`;
     }
     const sequenceRows = await tx<Array<{ sequence: number }>>`
       select coalesce(max(sequence), 0)::int + 1 as sequence
@@ -204,6 +223,7 @@ export async function openNextRoundFromStage(sql: Sql, input: StageRolloverInput
       players: priced.length,
       teams: teamIds.length,
       sourceStageId: source.id,
+      removedRosters,
     };
   });
 }
