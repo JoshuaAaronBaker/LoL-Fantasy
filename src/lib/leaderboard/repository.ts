@@ -39,10 +39,10 @@ export async function recalculateRosterScores(sql: Db, stageId?: string): Promis
         roster_id, player_id, rule_set_id, base_score, multiplier, final_score, games_scored, calculated_at
       )
       select rp.roster_id, rp.player_id, ${ruleSet.id},
-        round(coalesce(sum(case when m.id is not null then score.base_score else 0 end), 0), 2) as base_score,
+        round(coalesce(max(case when m.id is not null then score.base_score end), 0), 2) as base_score,
         case when r.captain_player_id = rp.player_id then ${ruleSet.captain_multiplier}::numeric else 1 end as multiplier,
         round(
-          coalesce(sum(case when m.id is not null then score.base_score else 0 end), 0)
+          coalesce(max(case when m.id is not null then score.base_score end), 0)
           * case when r.captain_player_id = rp.player_id then ${ruleSet.captain_multiplier}::numeric else 1 end,
           2
         ) as final_score,
@@ -99,4 +99,3 @@ export async function recalculateRosterScores(sql: Db, stageId?: string): Promis
 
   return { stages: stages.length, rosters: rostersProcessed, players: playersProcessed };
 }
-

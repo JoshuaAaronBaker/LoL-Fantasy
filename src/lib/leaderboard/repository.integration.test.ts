@@ -59,20 +59,28 @@ suite("leaderboard score materialization", () => {
       insert into matches (provider, provider_id, tournament_id, stage_id, status)
       values ('cito', ${`${providerPrefix}-match`}, ${tournaments[0].id}, ${stageId}, 'COMPLETED') returning id
     `;
-    const games = await sql!<Array<{ id: string }>>`
+    const games = await sql!<Array<{ id: string; provider_id: string }>>`
       insert into games (provider, provider_id, match_id, status, source_kind)
-      values ('cito', ${`${providerPrefix}-game`}, ${matches[0].id}, 'COMPLETED', 'fixture') returning id
+      values
+        ('cito', ${`${providerPrefix}-game-1`}, ${matches[0].id}, 'COMPLETED', 'fixture'),
+        ('cito', ${`${providerPrefix}-game-2`}, ${matches[0].id}, 'COMPLETED', 'fixture')
+      returning id, provider_id
     `;
-    const stats = await sql!<Array<{ id: string; player_id: string }>>`
+    const stats = await sql!<Array<{ id: string; player_id: string; game_id: string }>>`
       insert into player_game_stats (game_id, player_id, team_id, role, kills, deaths, assists, cs, won)
       values
         (${games[0].id}, ${captainId}, ${teams[0].id}, 'MID', 0, 0, 0, 0, false),
-        (${games[0].id}, ${secondPlayerId}, ${teams[0].id}, 'SUPPORT', 0, 0, 0, 0, false)
-      returning id, player_id
+        (${games[0].id}, ${secondPlayerId}, ${teams[0].id}, 'SUPPORT', 0, 0, 0, 0, false),
+        (${games[1].id}, ${captainId}, ${teams[0].id}, 'MID', 0, 0, 0, 0, false),
+        (${games[1].id}, ${secondPlayerId}, ${teams[0].id}, 'SUPPORT', 0, 0, 0, 0, false)
+      returning id, player_id, game_id
     `;
     const rules = await sql!<Array<{ id: string }>>`select id from fantasy_scoring_rule_sets where is_active`;
     for (const stat of stats) {
-      const value = stat.player_id === captainId ? 10 : 5;
+      const firstGame = stat.game_id === games[0].id;
+      const value = stat.player_id === captainId
+        ? (firstGame ? 10 : 20)
+        : (firstGame ? 5 : 3);
       await sql!`
         insert into player_game_scores (player_game_stat_id, rule_set_id, base_score, breakdown)
         values (${stat.id}, ${rules[0].id}, ${value}, '{}'::jsonb)
@@ -88,7 +96,7 @@ suite("leaderboard score materialization", () => {
     await sql!.end();
   });
 
-  it("applies the captain multiplier and converges on replay", async () => {
+  it("uses each player's best game, applies the captain multiplier, and converges on replay", async () => {
     await expect(recalculateRosterScores(sql!, stageId)).resolves.toEqual({ stages: 1, rosters: 1, players: 2 });
     await expect(recalculateRosterScores(sql!, stageId)).resolves.toEqual({ stages: 1, rosters: 1, players: 2 });
     const totals = await sql!<Array<{
@@ -97,14 +105,16 @@ suite("leaderboard score materialization", () => {
       select base_score::text, captain_bonus::text, total_score::text, games_scored
       from fantasy_roster_stage_scores where roster_id = ${rosterId}
     `;
-    expect(totals[0]).toEqual({ base_score: "15.00", captain_bonus: "5.00", total_score: "20.00", games_scored: 1 });
-    const players = await sql!<Array<{ player_id: string; multiplier: string; final_score: string }>>`
-      select player_id, multiplier::text, final_score::text
+    expect(totals[0]).toEqual({ base_score: "25.00", captain_bonus: "10.00", total_score: "35.00", games_scored: 2 });
+    const players = await sql!<Array<{
+      player_id: string; multiplier: string; final_score: string; games_scored: number;
+    }>>`
+      select player_id, multiplier::text, final_score::text, games_scored
       from fantasy_roster_player_scores where roster_id = ${rosterId} order by final_score desc
     `;
     expect(players.sort((left, right) => Number(right.final_score) - Number(left.final_score))).toEqual([
-      { player_id: captainId, multiplier: "1.5000", final_score: "15.00" },
-      { player_id: secondPlayerId, multiplier: "1.0000", final_score: "5.00" },
+      { player_id: captainId, multiplier: "1.5000", final_score: "30.00", games_scored: 2 },
+      { player_id: secondPlayerId, multiplier: "1.0000", final_score: "5.00", games_scored: 2 },
     ]);
   });
 });

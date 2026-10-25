@@ -179,7 +179,7 @@ export default async function WorldsPage() {
                           })}
                         </div>
                       )}
-                      <div className="border-t border-white/8 px-5 py-3 text-[10px] text-zinc-600">Raw fantasy points · no captain multiplier</div>
+                      <div className="border-t border-white/8 px-5 py-3 text-[10px] text-zinc-600">Best single-game fantasy score · no captain multiplier</div>
                     </Card>
                   </div>
                 );

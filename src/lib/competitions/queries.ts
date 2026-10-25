@@ -320,7 +320,7 @@ export async function getCompetitionHubWithDatabase(
           select fixture.stage_id, stat.player_id,
             (array_agg(stat.team_id order by game.game_number nulls last))[1] as team_id,
             (array_agg(coalesce(stat.role, player.role) order by game.game_number nulls last))[1] as role,
-            round(sum(score.base_score), 2) as total_score,
+            round(max(score.base_score), 2) as total_score,
             count(distinct game.id)::int as games_scored
           from matches fixture
           join games game on game.match_id = fixture.id
