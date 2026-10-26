@@ -316,12 +316,15 @@ export async function synchronizeStage(
       const current = lockedStages[0];
       if (!current?.roster_lock_time) throw new Error(`Stage ${input.stageSlug} no longer has a lock time.`);
       const matches = await tx<Array<{ status: string }>>`
-        select status from matches where stage_id = ${stage.id} order by provider_id
+        select status from matches
+        where stage_id = ${stage.id} and provider_id in ${tx(requestedIds)}
+        order by provider_id
       `;
       const gameCounts = await tx<Array<{ count: number }>>`
         select count(*)::int as count
         from games g join matches m on m.id = g.match_id
-        where m.stage_id = ${stage.id} and g.status in ('COMPLETE', 'COMPLETED', 'FINISHED', 'FINAL')
+        where m.stage_id = ${stage.id} and m.provider_id in ${tx(requestedIds)}
+          and g.status in ('COMPLETE', 'COMPLETED', 'FINISHED', 'FINAL')
       `;
       const nextStatus = determineStageStatus({
         currentStatus: current.status,

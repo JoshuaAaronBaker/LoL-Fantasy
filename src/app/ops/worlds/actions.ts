@@ -455,13 +455,13 @@ export async function configureWorldsStageSyncAction(formData: FormData) {
     if (!stage || !["OPEN", "LOCKED", "LIVE"].includes(stage.status)) {
       throw new Error("That stage cannot be scheduled.");
     }
-    await upsertStageSyncSchedule(getDatabase(), operator.userId, {
+    const schedule = await upsertStageSyncSchedule(getDatabase(), operator.userId, {
       stageId,
       intervalMinutes,
       matchProviderIds,
       refreshCompleted: formData.get("refreshCompleted") === "true",
     });
-    message = `Scheduled ${stage.name} every ${intervalMinutes} minutes.`;
+    message = `Scheduled ${stage.name} every ${intervalMinutes} minutes${schedule.reassignedMatches > 0 ? ` and moved ${schedule.reassignedMatches} unscored match${schedule.reassignedMatches === 1 ? "" : "es"} into this slate` : ""}.`;
   } catch {
     finish("Sync schedule was rejected. Check the stage, interval, and complete unique match manifest.", true);
   }

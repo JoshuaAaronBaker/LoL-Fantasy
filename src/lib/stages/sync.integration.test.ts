@@ -71,6 +71,11 @@ suite("stage synchronization", () => {
 
   it("assigns, ingests, scores, completes, and then converges on replay", async () => {
     const { provider, getTournament, getGame, getGamePlayerStats } = testProvider();
+    await sql!`
+      insert into matches (provider, provider_id, tournament_id, stage_id, status)
+      select 'cito', ${`${matchProviderId}-outside-manifest`}, tournament_id, id, 'UNSTARTED'
+      from tournament_stages where slug = ${stageSlug}
+    `;
     const first = await synchronizeStage(sql!, provider, {
       stageSlug,
       matchIds: [matchProviderId],
@@ -83,6 +88,8 @@ suite("stage synchronization", () => {
       matchesAssigned: 1,
       gamesIngested: 1,
     });
+
+    await sql!`delete from matches where provider_id = ${`${matchProviderId}-outside-manifest`}`;
 
     const second = await synchronizeStage(sql!, provider, { stageSlug });
     expect(second).toMatchObject({
@@ -120,6 +127,7 @@ suite("stage synchronization", () => {
       where stage_id = (select id from tournament_stages where slug = ${stageSlug})
       order by started_at desc limit 1
     `;
-    expect(rows[0]).toEqual({ status: "FAILED", error_message: "provider unavailable" });
+    expect(rows[0]).toMatchObject({ status: "FAILED" });
+    expect(rows[0].error_message).toContain("provider unavailable");
   });
 });

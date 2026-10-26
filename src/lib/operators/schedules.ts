@@ -24,21 +24,58 @@ export async function upsertStageSyncSchedule(
     throw new Error("Sync interval must be between 5 and 1440 minutes.");
   }
   const matchIds = uniqueMatchIds(input.matchProviderIds);
-  const rows = await sql<Array<{ id: string; enabled: boolean; next_run_at: string }>>`
-    insert into stage_sync_schedules (
-      stage_id, enabled, interval_minutes, match_provider_ids, refresh_completed, next_run_at, created_by
-    ) values (
-      ${input.stageId}, true, ${input.intervalMinutes}, ${matchIds}, ${input.refreshCompleted ?? false},
-      clock_timestamp(), ${operatorId}
-    )
-    on conflict (stage_id) do update set
-      enabled = true, interval_minutes = excluded.interval_minutes,
-      match_provider_ids = excluded.match_provider_ids,
-      refresh_completed = excluded.refresh_completed,
-      next_run_at = clock_timestamp()
-    returning id, enabled, next_run_at::text
-  `;
-  return rows[0];
+  return sql.begin(async (tx) => {
+    const stages = await tx<Array<{ tournament_id: string }>>`
+      select tournament_id from tournament_stages where id = ${input.stageId} for update
+    `;
+    const stage = stages[0];
+    if (!stage) throw new Error("Stage synchronization requires an existing stage.");
+
+    const incompatible = await tx<Array<{
+      provider_id: string; tournament_id: string; stage_id: string | null; games: number;
+    }>>`
+      select fixture.provider_id, fixture.tournament_id, fixture.stage_id,
+        count(game.id)::int as games
+      from matches fixture
+      left join games game on game.match_id = fixture.id
+      where fixture.provider = 'cito' and fixture.provider_id in ${tx(matchIds)}
+      group by fixture.id
+      having fixture.tournament_id <> ${stage.tournament_id}
+        or (fixture.stage_id is distinct from ${input.stageId} and count(game.id) > 0)
+    `;
+    if (incompatible[0]) {
+      throw new Error(`Match ${incompatible[0].provider_id} cannot move to this stage because it belongs to another tournament or already has ingested games.`);
+    }
+
+    // Competition setup may assign an official multi-day round before fantasy
+    // slates are split into daily redrafts. The operator's complete manifest is
+    // authoritative, but only unscored matches are safe to move between slates.
+    const reassigned = await tx<Array<{ id: string }>>`
+      update matches fixture set stage_id = ${input.stageId}
+      where fixture.provider = 'cito'
+        and fixture.tournament_id = ${stage.tournament_id}
+        and fixture.provider_id in ${tx(matchIds)}
+        and fixture.stage_id is distinct from ${input.stageId}
+        and not exists (select 1 from games game where game.match_id = fixture.id)
+      returning fixture.id
+    `;
+
+    const rows = await tx<Array<{ id: string; enabled: boolean; next_run_at: string }>>`
+      insert into stage_sync_schedules (
+        stage_id, enabled, interval_minutes, match_provider_ids, refresh_completed, next_run_at, created_by
+      ) values (
+        ${input.stageId}, true, ${input.intervalMinutes}, ${matchIds}, ${input.refreshCompleted ?? false},
+        clock_timestamp(), ${operatorId}
+      )
+      on conflict (stage_id) do update set
+        enabled = true, interval_minutes = excluded.interval_minutes,
+        match_provider_ids = excluded.match_provider_ids,
+        refresh_completed = excluded.refresh_completed,
+        next_run_at = clock_timestamp()
+      returning id, enabled, next_run_at::text
+    `;
+    return { ...rows[0], reassignedMatches: reassigned.length };
+  });
 }
 
 export async function setStageSyncScheduleEnabled(sql: Sql, stageId: string, enabled: boolean) {
@@ -95,7 +132,11 @@ export async function enqueueDueStageSyncJobs(sql: Sql, limit = 10) {
       const rows = await tx<Array<{ id: string }>>`
         insert into operator_jobs (job_type, payload, idempotency_key, requested_by)
         values ('STAGE_SYNC', ${tx.json(payload)}, ${idempotencyKey}, ${schedule.created_by})
-        on conflict (idempotency_key) do nothing
+        on conflict (idempotency_key) do update set
+          status = 'QUEUED', worker_id = null, lease_expires_at = null,
+          error_message = null, completed_at = null
+        where operator_jobs.status = 'FAILED'
+          and operator_jobs.attempts < operator_jobs.max_attempts
         returning id
       `;
       await tx`
