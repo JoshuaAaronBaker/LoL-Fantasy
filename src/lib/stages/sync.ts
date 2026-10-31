@@ -347,7 +347,7 @@ export async function synchronizeStage(
           end as expected_games
         from matches m
         left join games g on g.match_id = m.id
-        where stage_id = ${stage.id} and provider_id in ${tx(requestedIds)}
+        where m.stage_id = ${stage.id} and m.provider_id in ${tx(requestedIds)}
         group by m.id
         order by m.provider_id
       `;
