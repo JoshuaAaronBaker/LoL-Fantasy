@@ -9,47 +9,51 @@ describe("stage lifecycle", () => {
   it("keeps an open stage open before its exact lock time", () => {
     expect(determineStageStatus({
       currentStatus: "OPEN", databaseNow: now, lockAt: future,
-      matchStatuses: ["COMPLETED"], completedGames: 1,
+      matchStatuses: ["COMPLETED"], completedGames: 1, matchesSettled: true,
     })).toBe("OPEN");
   });
 
   it("locks at the lock timestamp when play has not started", () => {
     expect(determineStageStatus({
       currentStatus: "OPEN", databaseNow: past, lockAt: past,
-      matchStatuses: ["SCHEDULED"], completedGames: 0,
+      matchStatuses: ["SCHEDULED"], completedGames: 0, matchesSettled: false,
     })).toBe("LOCKED");
   });
 
   it("moves from locked to live when play or completed games exist", () => {
     expect(determineStageStatus({
       currentStatus: "LOCKED", databaseNow: now, lockAt: past,
-      matchStatuses: ["in progress", "SCHEDULED"], completedGames: 0,
+      matchStatuses: ["in progress", "SCHEDULED"], completedGames: 0, matchesSettled: false,
     })).toBe("LIVE");
     expect(determineStageStatus({
       currentStatus: "LOCKED", databaseNow: now, lockAt: past,
-      matchStatuses: ["UNKNOWN"], completedGames: 1,
+      matchStatuses: ["UNKNOWN"], completedGames: 1, matchesSettled: false,
     })).toBe("LIVE");
   });
 
   it("completes only after lock when every assigned match is terminal", () => {
     expect(determineStageStatus({
       currentStatus: "LIVE", databaseNow: now, lockAt: past,
-      matchStatuses: ["completed", "FINAL"], completedGames: 5,
+      matchStatuses: ["completed", "FINAL"], completedGames: 5, matchesSettled: true,
     })).toBe("COMPLETE");
     expect(determineStageStatus({
       currentStatus: "LIVE", databaseNow: now, lockAt: past,
-      matchStatuses: ["COMPLETED", "SCHEDULED"], completedGames: 5,
+      matchStatuses: ["COMPLETED", "SCHEDULED"], completedGames: 5, matchesSettled: false,
+    })).toBe("LIVE");
+    expect(determineStageStatus({
+      currentStatus: "LIVE", databaseNow: now, lockAt: past,
+      matchStatuses: ["COMPLETED", "FINAL"], completedGames: 4, matchesSettled: false,
     })).toBe("LIVE");
   });
 
   it("never moves a stage backward", () => {
     expect(determineStageStatus({
       currentStatus: "LIVE", databaseNow: now, lockAt: past,
-      matchStatuses: ["SCHEDULED"], completedGames: 0,
+      matchStatuses: ["SCHEDULED"], completedGames: 0, matchesSettled: false,
     })).toBe("LIVE");
     expect(determineStageStatus({
       currentStatus: "COMPLETE", databaseNow: now, lockAt: future,
-      matchStatuses: [], completedGames: 0,
+      matchStatuses: [], completedGames: 0, matchesSettled: false,
     })).toBe("COMPLETE");
   });
 

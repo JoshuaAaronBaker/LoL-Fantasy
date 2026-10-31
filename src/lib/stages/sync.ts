@@ -123,9 +123,15 @@ async function validateKnownMatches(
     status: string;
     start_time: string | null;
     completed_games: number;
+    expected_games: number | null;
   }>>`
     select m.provider_id, m.tournament_id, m.stage_id, m.status, m.start_time::text,
-      count(g.id) filter (where g.status in ('COMPLETE', 'COMPLETED', 'FINISHED', 'FINAL'))::int as completed_games
+      count(g.id) filter (where g.status in ('COMPLETE', 'COMPLETED', 'FINISHED', 'FINAL'))::int as completed_games,
+      case
+        when m.raw_payload ->> 'gameCount' ~ '^[0-9]+$'
+          then (m.raw_payload ->> 'gameCount')::int
+        else null
+      end as expected_games
     from matches m
     left join games g on g.match_id = m.id
     where m.provider = 'cito' and m.provider_id in ${sql(matchIds)}
@@ -142,18 +148,30 @@ async function validateKnownMatches(
     stageId: row.stage_id,
     startTime: row.start_time,
     completedGames: row.completed_games,
+    expectedGames: row.expected_games,
   }]));
 }
 
 export function shouldPollMatch(
-  match: { status: string; startTime: string | null; completedGames?: number } | undefined,
+  match: {
+    status: string;
+    startTime: string | null;
+    completedGames?: number;
+    expectedGames?: number | null;
+  } | undefined,
   databaseNow: string,
   refreshCompleted = false,
 ) {
   if (refreshCompleted || !match) return true;
-  // A provider can mark a match complete before its final game payload settles.
-  // Keep polling terminal matches until at least one completed game is safely stored.
-  if (isTerminalMatchStatus(match.status)) return (match.completedGames ?? 1) === 0;
+  // A provider can mark a match complete before every final game payload settles.
+  // The terminal match payload records the played game count, so keep polling
+  // until each of those games is safely stored.
+  if (isTerminalMatchStatus(match.status)) {
+    const completedGames = match.completedGames ?? 0;
+    return match.expectedGames == null
+      ? completedGames === 0
+      : completedGames < match.expectedGames;
+  }
   if (isLiveMatchStatus(match.status) || !match.startTime) return true;
   return new Date(match.startTime).valueOf() <= new Date(databaseNow).valueOf() + MATCH_POLL_LEAD_MS;
 }
@@ -315,10 +333,23 @@ export async function synchronizeStage(
       `;
       const current = lockedStages[0];
       if (!current?.roster_lock_time) throw new Error(`Stage ${input.stageSlug} no longer has a lock time.`);
-      const matches = await tx<Array<{ status: string }>>`
-        select status from matches
+      const matches = await tx<Array<{
+        status: string;
+        completed_games: number;
+        expected_games: number | null;
+      }>>`
+        select m.status,
+          count(g.id) filter (where g.status in ('COMPLETE', 'COMPLETED', 'FINISHED', 'FINAL'))::int as completed_games,
+          case
+            when m.raw_payload ->> 'gameCount' ~ '^[0-9]+$'
+              then (m.raw_payload ->> 'gameCount')::int
+            else null
+          end as expected_games
+        from matches m
+        left join games g on g.match_id = m.id
         where stage_id = ${stage.id} and provider_id in ${tx(requestedIds)}
-        order by provider_id
+        group by m.id
+        order by m.provider_id
       `;
       const gameCounts = await tx<Array<{ count: number }>>`
         select count(*)::int as count
@@ -332,6 +363,9 @@ export async function synchronizeStage(
         lockAt: current.roster_lock_time,
         matchStatuses: matches.map((match) => match.status),
         completedGames: gameCounts[0].count,
+        matchesSettled: matches.every((match) => match.expected_games == null
+          ? match.completed_games > 0
+          : match.completed_games >= match.expected_games),
       });
       await tx`
         update tournament_stages

@@ -58,6 +58,7 @@ export interface StageLifecycleInput {
   lockAt: string;
   matchStatuses: string[];
   completedGames: number;
+  matchesSettled: boolean;
 }
 
 export function determineStageStatus(input: StageLifecycleInput): StageStatus {
@@ -75,6 +76,7 @@ export function determineStageStatus(input: StageLifecycleInput): StageStatus {
   } else if (
     input.matchStatuses.length > 0
     && input.matchStatuses.every(isTerminalMatchStatus)
+    && input.matchesSettled
   ) {
     desired = "COMPLETE";
   } else if (
